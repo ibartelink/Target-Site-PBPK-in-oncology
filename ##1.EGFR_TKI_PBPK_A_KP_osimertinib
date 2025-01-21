@@ -1,4 +1,4 @@
-##EGFR TKI Whole Body PK model 
+##1.EGFR_TKI_PBPK_A_KP_osimertinib
 ##Osimertinib KP calculations
 #Load required packages
 library(dplyr)
