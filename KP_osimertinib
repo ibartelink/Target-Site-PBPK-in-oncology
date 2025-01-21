@@ -1,0 +1,130 @@
+##Osimertinib KP calculations 20/1/2025
+
+#Load required packages
+library(dplyr)
+
+### Base model Osimertinib ###
+#Kp = steady-state tissue and plasma
+#Kpu = steady state tissue and plasma water (unbound drug in plasma)
+#Calculate KPU of IW, EW, NLNP and Alb for each tissue
+
+IW       <- (((1+10^(pKa-pHiw)) * Parameters[,"Fiw"]) / 
+               (1+10^(pKa-pHp)))
+EW       <- (Parameters[,"Few"])
+NLNP     <- ((Parameters[,"LogP"] * Parameters[,"Fnl"] +   # Neutral lipids and neutral phospholipids
+                (0.3 * Parameters[,"LogP"] + 0.7) * Parameters[,"Fnp"]) / 
+               (1+10^(pKa-pHp)))    
+
+### Strong bases model addition (Asmuss KPU lysosome) ###
+## KPUbc
+KPUbc   <- ((H-1+bp)/(Fu*H))
+
+## Fu/bp
+FUbp   <- (Fu/bp)
+
+## KaBC  ## affinity red blood cells
+Kabc   <- ((KPUbc-(FiwBloodcells * (1+10 ^ (pKa-pHbc)) / (1+10 ^ (pKa-pHp))) - 
+              ((LogP * FnlBloodcells + ((0.3*LogP + 0.7) * FnpBloodcells)) /
+                 (1+10 ^ (pKa-pHp)))) * ((1+10^(pKa-pHp))/(APBloodcells* 10 ^ (pKa-pHbc))))
+
+# Acidic Phospholipids
+AP      <- ((Kabc * Parameters_Tissues[,"AP"] * (10^(pKa-pHiw))) /   
+              (1+10^(pKa-pHp)))
+
+Parameters_lys_tissues <- Parameters_lysosome # %>%
+#filter(!Cell.type == "Tumor") 
+
+LYSiw    = ((Parameters_lys_tissues[,"Fiw"] * (1+10^(pKa - Parameters_lys_tissues[,"pH"]))) / (1+10^(pKa-pHiw)))
+LYSap    = ((Kabc*Parameters_lys_tissues[,"AP"] * (10^(pKa - Parameters_lys_tissues[, "pH"]))) / (1+10^(pKa-pHiw)))
+LYSnpnl  = ((LogP * Parameters_lys_tissues[,"Fnl"] + ((0.3 * LogP + 0.7) * Parameters_lys_tissues[,"Fnp"])) / (1+10^(pKa-pHiw)))
+
+KPUlys <- Parameters_lys_tissues %>%
+  mutate(
+    Asmuss = (LYSiw + LYSap + LYSnpnl)
+  ) %>%
+  select(
+    !c(Fiw, AP, Fnl, Fnp, pH, Fraction, F)
+  )
+
+
+###Lysosomal trapping (Asmuss)###
+## LungKPU
+FalvLys     = (KPUlys[1,"Asmuss"] * Falv * Fcellalv *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FtypLys     = (KPUlys[2,"Asmuss"] * Ftyp * Fcelltyp *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FresLys     = (KPUlys[3,"Asmuss"] * Fres * Fcellres *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FlungLys    = (FalvLys + FtypLys + FresLys)
+
+## Liver
+FhepLys     = (KPUlys[4,"Asmuss"] * Fhep * Fcellhep *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FkupLys     = (KPUlys[5,"Asmuss"] * Fkup * Fcellkup *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FfatLys     = (KPUlys[6,"Asmuss"] * Ffat * Fcellfat *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FendLys     = (KPUlys[7,"Asmuss"] * Fend * Fcellend *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+FliverLys   = (FhepLys + FkupLys + FfatLys + FendLys)
+
+## Kidney
+FkidneyLys  = (KPUlys[8,"Asmuss"] * Fkid * Fcellkid *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Adipose
+FadiposeLys   = (KPUlys[9,"Asmuss"] * FlysAdipose  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Brain
+FbrainLys   = (KPUlys[10,"Asmuss"] * FlysBrain  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Gut
+FgutLys    = (KPUlys[11,"Asmuss"] * FlysGut  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Heart
+FheartLys    = (KPUlys[12,"Asmuss"] * FlysHeart  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Muscle
+FmuscleLys    = (KPUlys[13,"Asmuss"] * FlysMuscle  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Skin
+FskinLys    = (KPUlys[14,"Asmuss"] * FlysSkin  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## Spleen
+FspleenLys  = (KPUlys[15,"Asmuss"] * FlysSpleen  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+## tumor
+FTumorLys =  (KPUlys[16,"Asmuss"] * FlysTumor  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+#pancreas
+FpancreasLys =  (KPUlys[17,"Asmuss"] * FlysPancreas  * 1     *  ((1+10^(pKa-pHiw))/(1+10^(pKa-pHp))))
+
+Lysosome <- data.frame(                                                       #   Create dataframe that matches size of other dataframes,  
+  "Tissue" = c("Adipose", "Brain", "Gut", "Heart", "Kidney", "Liver",  #   needed for KPU calculation
+               "Lung", "Muscle", "Pancreas","Skin", "Spleen", "Tumor"),
+  "Lys" = c(FadiposeLys, FbrainLys, FgutLys, FheartLys, FkidneyLys, FliverLys, FlungLys, FmuscleLys, FpancreasLys, FskinLys, FspleenLys,FTumorLys)
+)
+
+
+################## ---- KPU calculation ---- #########################
+
+### Calculation of final KPU & KP ###
+### add up KPUs of each cell component for every tissue ###
+### For use in tissues WITHOUT EGFR!
+# healthy tissue
+
+KPU_final_tissues <- data.frame(
+  "Tissue" = c("Adipose", "Brain", "Gut", "Heart", "Kidney", "Liver",
+               "Lung", "Muscle", "Pancreas","Skin", "Spleen", "Tumor"),
+  "KPU_final" = c(IW + EW + NLNP + AP + Lysosome[,"Lys"])   # EGFR is added later in ODEs
+)
+
+KP_tissues <- KPU_final_tissues %>%   # KP healthy tissues
+  mutate(KP_final = KPU_final_tissues[, 2] * Fu)
+
+## Tissue-to-plasma partition coefficients (KP values) calculated using Rodgers et al (2006)
+KPAdipose <- KP_tissues[1,"KP_final"]
+KPBrain <- KP_tissues[2,"KP_final"]
+KPGut <- KP_tissues[3,"KP_final"]
+KPHeart <- KP_tissues[4,"KP_final"]
+KPKidney <- KP_tissues[5,"KP_final"]
+KPLiver <- KP_tissues[6,"KP_final"] 
+KPLung  <- KP_tissues[7,"KP_final"] 
+KPMuscle  <- KP_tissues[8,"KP_final"]
+KPPancreas <- KP_tissues[9,"KP_final"]
+KPSkin  <- KP_tissues[10,"KP_final"]
+KPSpleen  <- KP_tissues[11,"KP_final"]
+KPTumor  <- KP_tissues[12,"KP_final"]
+KPRest  <- mean(KP_tissues$KP_final)
