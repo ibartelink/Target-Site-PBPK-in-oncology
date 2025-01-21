@@ -1,0 +1,364 @@
+1.EGFR_TKI_PBPK_C_Model_code
+#Osimertinib PBPK model 
+
+#Loading required packages
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(deSolve)
+
+#Model parameters----------------------------
+parameters_model <- unlist(c(data.frame(
+  #Volumes---
+  Vad,
+  Vad_int,
+  Var,
+  Vbr,
+  Vgu,
+  Vgu_int,
+  Vhe,
+  Vhe_int,
+  Vki,
+  Vki_int,
+  Vli,
+  Vli_int,
+  Vlu,
+  Vlu_int,
+  Vmu,
+  Vmu_int,
+  Vre,
+  Vpa,
+  Vpa_int,
+  Vsk,
+  Vsk_int,
+  Vsp,
+  Vve,
+  Vtumor,
+  Vtu_int,
+  #Flows---
+  QAdipose,
+  QBrain,
+  QGut,
+  QHa,
+  QHeart,
+  QLiver,
+  QLung,
+  QMuscle,
+  QPancreas,
+  QRest,
+  QSkin,
+  QKidney,
+  QSpleen,
+  QTumor , 
+  #KPs---
+  KPAdipose,
+  KPBrain,
+  KPGut,
+  KPHeart,
+  KPKidney,
+  KPLiver,
+  KPLung,
+  KPMuscle,
+  KPPancreas,
+  KPRest,
+  KPSkin,
+  KPTumor , 
+  #other parameters---
+  bp,
+  ka,
+  Fu,
+  CL_R,
+  CL_int_lit,
+  F,
+  konwt  , 
+  koffwt ,
+  kontumor,
+  kofftumor,
+  #EGFR concentrations---
+  EGFRLung,
+  EGFRLiver,
+  EGFRGut,
+  EGFRHeart,
+  EGFRKidney,
+  EGFRSkin,
+  EGFRMuscle,
+  EGFRTumor,
+  EGFRAdipose,
+  EGFRPancreas
+))) 
+
+#Function for calculation fraction unbound----- 
+fEGFR.unbound <- function(A, R, V){
+  fEGFR <- 1 - (A / (R * V))
+  fEGFR[A > (R * V)] <- 0
+  return(fEGFR)
+}
+
+#PBPK EGFR-binding model----------------------------------------
+#Initial conditions
+state <- unlist(c(data.frame( 
+  A_LUNG=0,
+  A_LUNG_EGFR=0,
+  A_TUMOR=0,
+  A_TUMOR_EGFR=0,
+  A_ADIPOSE=0,
+  A_ADIPOSE_EGFR=0,
+  A_HEART=0,
+  A_HEART_EGFR=0,
+  A_BRAIN=0,
+  A_MUSCLE=0,
+  A_MUSCLE_EGFR=0,
+  A_PANCREAS=0,
+  A_PANCREAS_EGFR=0,
+  A_SKIN=0,
+  A_SKIN_EGFR=0,
+  A_SPLEEN=0,
+  A_GUTLUMEN=0,
+  A_GUT=0,
+  A_GUT_EGFR=0,
+  A_LIVER=0,
+  A_LIVER_EGFR=0,
+  A_KIDNEY=0,
+  A_KIDNEY_EGFR=0,
+  A_REST=0,
+  A_VEN=0,
+  A_ART=0
+  
+  
+)))
+PBPK_Model <- function(t, state, parameters){
+  with(as.list(c(state, parameters)),{
+    #Lung
+    dA_LUNG       = (QLung * (A_VEN / Vve)) - QLung * ((A_LUNG / Vlu)  /(KPLung/bp)) - konwt* A_LUNG *(((EGFRLung*Vlu)/Vlu_int)*fEGFR.unbound(A = A_LUNG_EGFR, R = EGFRLung, V = Vlu))+ koffwt * A_LUNG_EGFR
+    dA_LUNG_EGFR  =  konwt* A_LUNG *(((EGFRLung*Vlu)/Vlu_int)*fEGFR.unbound(A = A_LUNG_EGFR, R = EGFRLung, V = Vlu)) - koffwt * A_LUNG_EGFR
+    #Tumor
+    dA_TUMOR       = QTumor * (A_VEN/ Vve) - QTumor * ((A_TUMOR/ Vtumor)  /(KPTumor/bp)) - kontumor* A_TUMOR * (((EGFRTumor*Vtumor)/Vtu_int)*fEGFR.unbound(A = A_TUMOR_EGFR, R = EGFRTumor, V =   Vtumor)) + kofftumor * A_TUMOR_EGFR
+    dA_TUMOR_EGFR  =  kontumor*A_TUMOR* (((EGFRTumor*Vtumor)/Vtu_int)*fEGFR.unbound(A = A_TUMOR_EGFR, R = EGFRTumor, V =   Vtumor)) - kofftumor * A_TUMOR_EGFR
+    #Adipose
+    dA_ADIPOSE   = (QAdipose * (A_ART / Var)) - QAdipose * ((A_ADIPOSE / Vad)  /(KPAdipose/bp)) - konwt* A_ADIPOSE * (((EGFRAdipose*Vad)/Vad_int)*fEGFR.unbound(A = A_ADIPOSE_EGFR, R = EGFRAdipose, V = Vad)) + koffwt * A_ADIPOSE_EGFR
+    dA_ADIPOSE_EGFR  =  konwt *A_ADIPOSE * (((EGFRAdipose*Vad)/Vad_int)*fEGFR.unbound(A = A_ADIPOSE_EGFR, R = EGFRAdipose, V = Vad)) - koffwt * A_ADIPOSE_EGFR
+    #Heart
+    dA_HEART     = QHeart * (A_ART / Var) - QHeart * ((A_HEART/Vhe)/(KPHeart/bp)) - konwt*A_HEART * (((EGFRHeart*Vhe)/Vhe_int)*fEGFR.unbound(A = A_HEART_EGFR, R = EGFRHeart, V = Vhe)) + koffwt * A_HEART_EGFR
+    dA_HEART_EGFR  = konwt* A_HEART * (((EGFRHeart*Vhe)/Vhe_int)*fEGFR.unbound(A = A_HEART_EGFR, R = EGFRHeart, V = Vhe)) - koffwt * A_HEART_EGFR
+    #Brain
+    dA_BRAIN     = (QBrain * (A_ART / Var)) - QBrain * ((A_BRAIN   / Vbr)  /(KPBrain/bp))
+    #Muscle
+    dA_MUSCLE    = (QMuscle * (A_ART / Var)) - QMuscle * ((A_MUSCLE    / Vmu)  /(KPMuscle/bp)) - konwt *A_MUSCLE* (((EGFRMuscle*Vmu)/Vmu_int)*fEGFR.unbound(A = A_MUSCLE_EGFR, R = EGFRMuscle, V = Vmu)) + koffwt * A_MUSCLE_EGFR
+    dA_MUSCLE_EGFR  =  konwt *A_MUSCLE * (((EGFRMuscle*Vmu)/Vmu_int)*fEGFR.unbound(A = A_MUSCLE_EGFR, R = EGFRMuscle, V = Vmu)) - koffwt * A_MUSCLE_EGFR
+    #Pancreas
+    dA_PANCREAS  = QPancreas * (A_ART / Var) - QPancreas * ((A_PANCREAS  / Vpa)  /(KPPancreas/bp)) - konwt *A_PANCREAS* (((EGFRPancreas*Vpa)/Vpa_int)*fEGFR.unbound(A = A_PANCREAS_EGFR, R = EGFRPancreas, V = Vpa)) + koffwt * A_PANCREAS_EGFR
+    dA_PANCREAS_EGFR  =  konwt*A_PANCREAS * (((EGFRPancreas*Vpa)/Vpa_int)*fEGFR.unbound(A = A_PANCREAS_EGFR, R = EGFRPancreas, V = Vpa)) - koffwt * A_PANCREAS_EGFR
+    #Skin
+    dA_SKIN      = QSkin * (A_ART / Var) - QSkin * ((A_SKIN    / Vsk)  /(KPSkin/bp)) - konwt* A_SKIN * (((EGFRSkin*Vsk)/Vsk_int)*fEGFR.unbound(A = A_SKIN_EGFR, R = EGFRSkin, V = Vsk)) + koffwt * A_SKIN_EGFR
+    dA_SKIN_EGFR  =  konwt* A_SKIN * (((EGFRSkin*Vsk)/Vsk_int)*fEGFR.unbound(A = A_SKIN_EGFR, R = EGFRSkin, V = Vsk)) - koffwt * A_SKIN_EGFR
+    #Spleen
+    dA_SPLEEN    = QSpleen * (A_ART / Var) - QSpleen * ((A_SPLEEN  / Vsp)  /(KPSpleen/bp))
+    #Gut
+    dA_GUTLUMEN  = (- ka * (A_GUTLUMEN) * F )
+    dA_GUT       = ka * (A_GUTLUMEN) * F   + QGut * (A_ART / Var) - QGut * ((A_GUT / Vgu) / (KPGut/bp)) - konwt*A_GUT * (((EGFRGut*Vgu)/Vgu_int)*fEGFR.unbound(A = A_GUT_EGFR, R = EGFRGut, V = Vgu)) + koffwt * A_GUT_EGFR
+    dA_GUT_EGFR  =  konwt *A_GUT * (((EGFRGut*Vgu)/Vgu_int)*fEGFR.unbound(A = A_GUT_EGFR, R = EGFRGut, V = Vgu)) - koffwt * A_GUT_EGFR
+    #Liver
+    dA_LIVER     = QGut * ((A_GUT / Vgu)/(KPGut/bp)) +  QSpleen *((A_SPLEEN / Vsp)/(KPSpleen/bp)) + QHa*(A_ART / Var) - QLiver * ((A_LIVER / Vli)  /(KPLiver/bp)) - CL_int_lit *(((A_LIVER/ Vli)*Fu)/(KPLiver/bp)) - konwt* A_LIVER * (((EGFRLiver*Vli)/Vli_int)*fEGFR.unbound(A = A_LIVER_EGFR, R = EGFRLiver, V = Vli)) + koffwt * A_LIVER_EGFR
+    dA_LIVER_EGFR  =  konwt* A_LIVER * (((EGFRLiver*Vli)/Vli_int)*fEGFR.unbound(A = A_LIVER_EGFR, R = EGFRLiver, V = Vli)) - koffwt * A_LIVER_EGFR
+    #Kidney
+    dA_KIDNEY    = QKidney * (A_ART / Var) - QKidney * ((A_KIDNEY  / Vki)  /(KPKidney/bp)) - (CL_R * Fu ) * ((A_KIDNEY / Vki) / (KPKidney/ bp)) - konwt*A_KIDNEY * (((EGFRKidney*Vki)/Vki_int)*fEGFR.unbound(A = A_KIDNEY_EGFR, R = EGFRKidney, V = Vki)) + koffwt * A_KIDNEY_EGFR
+    dA_KIDNEY_EGFR  =  konwt*A_KIDNEY* (((EGFRKidney*Vki)/Vki_int)*fEGFR.unbound(A = A_KIDNEY_EGFR, R = EGFRKidney, V = Vki)) - koffwt * A_KIDNEY_EGFR
+    #Rest of body
+    dA_REST      = QRest * (A_ART / Var) - QRest * ((A_REST  / Vre)  /(KPRest/bp))
+    #Venous blood
+    dA_VEN       = (- QLung * (A_VEN / Vve)
+                    - QTumor * (A_VEN / Vve)
+                    + QAdipose * ((A_ADIPOSE / Vad)   /(KPAdipose/bp)) 
+                    + QHeart * ((A_HEART / Vhe)  /(KPHeart/bp))
+                    + QBrain * ((A_BRAIN / Vbr)   /(KPBrain/bp)) 
+                    + QMuscle * ((A_MUSCLE  / Vmu)   /(KPMuscle/bp))
+                    + QKidney * ((A_KIDNEY  / Vki)   /(KPKidney/bp))
+                    + QLiver * ((A_LIVER / Vli)  /(KPLiver/bp))
+                    + QSkin * ((A_SKIN  / Vsk)  /(KPSkin/bp))
+                    + QPancreas * ((A_PANCREAS / Vpa)  /(KPPancreas/bp))
+                    + QRest * ((A_REST / Vre) /(KPRest/bp))
+    )
+    #Arterial blood
+    dA_ART       = (+ QLung * ((A_LUNG/Vlu)  /(KPLung/bp))
+                    + QTumor * ((A_TUMOR/Vtumor)/ (KPTumor/bp))
+                    - QAdipose * (A_ART / Var) 
+                    - QHeart * (A_ART / Var)
+                    - QBrain * (A_ART / Var)
+                    - QMuscle * (A_ART / Var) 
+                    - QKidney * (A_ART / Var) 
+                    - QGut * (A_ART / Var)
+                    - QPancreas * (A_ART / Var)
+                    - QSkin * (A_ART / Var)
+                    - QSpleen * (A_ART / Var) 
+                    - QHa * (A_ART / Var)
+                    - QRest * (A_ART / Var)
+    )
+    
+    #Dataframe output table
+    list(c(
+      dA_LUNG,
+      dA_LUNG_EGFR,
+      dA_TUMOR,
+      dA_TUMOR_EGFR,
+      dA_ADIPOSE,
+      dA_ADIPOSE_EGFR,
+      dA_HEART,
+      dA_HEART_EGFR,
+      dA_BRAIN,
+      dA_MUSCLE,
+      dA_MUSCLE_EGFR,
+      dA_PANCREAS,
+      dA_PANCREAS_EGFR,
+      dA_SKIN,
+      dA_SKIN_EGFR,
+      dA_SPLEEN,
+      dA_GUTLUMEN,
+      dA_GUT,
+      dA_GUT_EGFR,
+      dA_LIVER,
+      dA_LIVER_EGFR,
+      dA_KIDNEY,
+      dA_KIDNEY_EGFR,
+      dA_REST,
+      dA_VEN,
+      dA_ART
+    ))
+    
+  })
+}
+
+###Base model without EGFR binding per comparison###-------------------
+state_BASE <- unlist(c(data.frame( 
+  A_LUNG=0,
+  A_TUMOR=0,
+  A_ADIPOSE=0,
+  A_HEART=0,
+  A_BRAIN=0,
+  A_MUSCLE=0,
+  A_PANCREAS=0,
+  A_SKIN=0,
+  A_SPLEEN=0,
+  A_GUTLUMEN=0,
+  A_GUT=0,
+  A_LIVER=0,
+  A_KIDNEY=0,
+  A_REST=0,
+  A_VEN=0,
+  A_ART=0
+)))
+
+PBPK_Model_BASE <- function(t, state, parameters){
+  with(as.list(c(state, parameters)),{
+    #Lung
+    dA_LUNG       = (QLung * (A_VEN / Vve)) - QLung * ((A_LUNG / Vlu)  /(KPLung/bp))
+    #Tumor
+    dA_TUMOR       = QTumor * (A_VEN/ Vve) - QTumor * ((A_TUMOR/ Vtumor)  /(KPTumor/bp))
+    #Adipose
+    dA_ADIPOSE   = (QAdipose * (A_ART / Var)) - QAdipose * ((A_ADIPOSE / Vad)  /(KPAdipose/bp))
+    #Heart
+    dA_HEART     = QHeart * (A_ART / Var) - QHeart * ((A_HEART/Vhe)/(KPHeart/bp))
+    #Brain
+    dA_BRAIN     = (QBrain * (A_ART / Var)) - QBrain * ((A_BRAIN   / Vbr)  /(KPBrain/bp))
+    #Muscle
+    dA_MUSCLE    = (QMuscle * (A_ART / Var)) - QMuscle * ((A_MUSCLE    / Vmu)  /(KPMuscle/bp))
+    #Pancreas
+    dA_PANCREAS  = QPancreas * (A_ART / Var) - QPancreas * ((A_PANCREAS  / Vpa)  /(KPPancreas/bp))
+    #Skin
+    dA_SKIN      = QSkin * (A_ART / Var) - QSkin * ((A_SKIN    / Vsk)  /(KPSkin/bp))
+    #Spleen
+    dA_SPLEEN    = QSpleen * (A_ART / Var) - QSpleen * ((A_SPLEEN  / Vsp)  /(KPSpleen/bp))
+    #Gut
+    dA_GUTLUMEN  = (- ka * (A_GUTLUMEN) * F )
+    dA_GUT       = ka * (A_GUTLUMEN) * F   + QGut * (A_ART / Var) - QGut * ((A_GUT / Vgu) / (KPGut/bp))
+    #Liver
+    dA_LIVER     = QGut * ((A_GUT / Vgu)/(KPGut/bp)) +  QSpleen *((A_SPLEEN / Vsp)/(KPSpleen/bp)) + QHa*(A_ART / Var) - QLiver * ((A_LIVER / Vli)  /(KPLiver/bp)) - CL_int_lit *(((A_LIVER/ Vli)*Fu)/(KPLiver/bp))
+    #Kidney
+    dA_KIDNEY    = QKidney * (A_ART / Var) - QKidney * ((A_KIDNEY  / Vki)  /(KPKidney/bp)) - (CL_R * Fu ) * ((A_KIDNEY / Vki) / (KPKidney/ bp))
+    #Rest of body
+    dA_REST      = QRest * (A_ART / Var) - QRest * ((A_REST  / Vre)  /(KPRest/bp))
+    #venous blood
+    dA_VEN       = (- QLung * (A_VEN / Vve)
+                    - QTumor * (A_VEN / Vve)
+                    + QAdipose * ((A_ADIPOSE / Vad)   /(KPAdipose/bp)) 
+                    + QHeart * ((A_HEART / Vhe)  /(KPHeart/bp))
+                    + QBrain * ((A_BRAIN / Vbr)   /(KPBrain/bp)) 
+                    + QMuscle * ((A_MUSCLE  / Vmu)   /(KPMuscle/bp))
+                    + QKidney * ((A_KIDNEY  / Vki)   /(KPKidney/bp))
+                    + QLiver * ((A_LIVER / Vli)  /(KPLiver/bp))
+                    + QSkin * ((A_SKIN  / Vsk)  /(KPSkin/bp))
+                    + QPancreas * ((A_PANCREAS / Vpa)  /(KPPancreas/bp))
+                    + QRest * ((A_REST / Vre) /(KPRest/bp))
+    )
+    #arterial blood
+    dA_ART       = (+ QLung * ((A_LUNG/Vlu)  /(KPLung/bp))
+                    + QTumor * ((A_TUMOR/Vtumor)/ (KPTumor/bp)) 
+                    - QAdipose * (A_ART / Var) 
+                    - QHeart * (A_ART / Var)
+                    - QBrain * (A_ART / Var)
+                    - QMuscle * (A_ART / Var) 
+                    - QKidney * (A_ART / Var) 
+                    - QGut * (A_ART / Var)
+                    - QPancreas * (A_ART / Var)
+                    - QSkin * (A_ART / Var)
+                    - QSpleen * (A_ART / Var) 
+                    - QHa * (A_ART / Var)
+                    - QRest * (A_ART / Var)
+    )
+    
+   #Dataframe output table
+    list(c(
+      dA_LUNG,
+      dA_TUMOR,
+      dA_ADIPOSE,
+      dA_HEART,
+      dA_BRAIN,
+      dA_MUSCLE,
+      dA_PANCREAS,
+      dA_SKIN,
+      dA_SPLEEN,
+      dA_GUTLUMEN,
+      dA_GUT,
+      dA_LIVER,
+      dA_KIDNEY,
+      dA_REST,
+      dA_VEN,
+      dA_ART
+    ))
+    
+  })
+}
+
+
+#Simulations-------------------
+#Microdose simulation according to Amsterdam UMC PET study setup
+timeMG <- seq(0, 120, by = 1)   # simulate 2 hrs by 1 minute
+DoseMG <- data.frame(var = "A_VEN",   ## location of drug administration
+                     time = c(0),   ## single dose at t=0
+                     value = (0.0027/500*10^6) ,  ## mean population microdose is 2.7 ug, unit in nanomoles
+                     method = "add")
+EventsMG      <- list(data=DoseMG)
+
+Simulation_micro <- ode(y= state, times = timeMG, func = PBPK_Model, parms = parameters_model, events = EventsMG)
+Simulation_micro_base <- ode(y= state_BASE, times = timeMG, func =PBPK_Model_BASE, parms = parameters_model, events = EventsMG) 
+
+#Single therapeutic oral dose (80mg) simulation
+timeMG <- seq(0, 21600, by = 1)   # simulate 360 hours by 1 minute
+DoseMG <- data.frame(var = "A_GUTLUMEN",   ## location of drug administration
+                     time = c(0),   ##dose at  t=0
+                     value = (80/500*10^6) ,  ## 80 mg at 0 hrs; unit in nanomoles
+                     method = "add")
+EventsMG      <- list(data=DoseMG)   
+
+Simulation_80mg <- ode(y= state, times = timeMG, func =PBPK_Model, parms = parameters_model, events = EventsMG)
+Simulation_80mg_base <- ode(y= state_BASE, times = timeMG, func =PBPK_Model_BASE, parms = parameters_model, events = EventsMG)
+          
+
+#Therapeutic simulation according to Reddy study setup
+timeMG_therapeutic <- seq(0, 29*24*60, by = 1)   #simulate for 29 days by 1 minute
+DoseMG_therapeutic <- data.frame(var = "A_GUTLUMEN",   #location of drug administration
+                                 time =  c(0, seq(from = 7*24*60, to = 29*24*60, by = 1*24*60)), #dosing regimen, single dose in first 7 days, followed by daily dosing for 22 more days
+                                 value = (80/500*10^6) ,  ## 80 mg in unit nanomoles
+                                 method = "add")
+
+EventsMG_therapeutic      <- list(data=DoseMG_therapeutic)
+Simulation_80mgQD <- ode(y= state, times = timeMG_therapeutic, func = PBPK_Model, parms = parameters_model, events = EventsMG_therapeutic)
