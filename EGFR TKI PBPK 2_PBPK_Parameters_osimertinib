@@ -1,0 +1,360 @@
+EGFR TKI PBPK 2_PBPK_Parameters_osimertinib
+#Osimertinib Parameters
+
+##Load required packages-----
+library(dplyr)
+
+#Chemical drug characteristics--------------------------------------------------
+MW <- 500   # molecular weight, g/mol
+LogP <-  3.2   # LogP, lipophilicity, Colclough, N., Chen, K., Johnstrom, P., Strittmatter, N., Yan, Y., Wrigley, G. L., . Cross, D. A. . (2021).                     Preclinical comparison of the blood-brain barrier permeability of osimertinib with other EGFR TKIs. Clinical Cancer Research, 27(1),                  189-201. https://doi.org/10.1158/1078-0432.CCR-19-1871)
+LogP_V <- 1.115*LogP-1.35   # LogP (vegetable oil:water), specific to adipose tissues
+pKa <-  9.0   # pKa, Colclough et al. (2021)
+pb <- 1.30   # Plasma/blood ratio, Van de Stadt, E. A., Yaqub, M., Schuit, R. C., Bartelink, I. H., Leeuwerik, A. F., Schwarte, L. A., . Bahce, I.                (2022). Relationship between Biodistribution and Tracer Kinetics of 11C-Erlotinib, 18F-Afatinib and 11C-Osimertinib and Image Quality                Evaluation Using Pharmacokinetic/Pharmacodynamic Analysis in Advanced Stage Non-Small Cell Lung Cancer Patients. Diagnostics (Basel),                12(4), 883. https://doi.org/10.3390/diagnostics12040883
+bp <-  1/pb  # Blood/plasma ratio, Van de Stadt (2022)
+Fu <- 0.0535   # Fraction unbound, Colclough et al. (2021)
+#Absorption
+F      <- 0.70   # Reddy (2018)
+ka       = 0.24/60   ## absorption rate constant (/min), Van de Stadt et al. (2022)
+#Target-binding rates
+konmt <- (3.1/1000*60)  # kon L858R/T790M mutated EGFR. 3.1/M/s transformed to /nM/min.Ref: Xiang Zhai et al. Changed V3
+koffmt <- 0.17*60  #koff L858R/T790M mutated EGFR. 0.17/s transformed to /min.Ref: Xiang Zhai et al. Changed V3
+konwt <- (2.9/1000*60)   #kon wild type EGFR. 2.9/?M/s transformed to nM/min. Ref: Xiang Zhai et al. Changed V3
+koffwt <- 2.7*60 #koff wild type EGFR. 2.7/s transformed to /min. Ref: Xiang Zhai et al. Changed V3
+kontumor <- (konwt + konmt) / 2 #Average of mutation and wild-type (50/50 ratio expression on tumor)
+kofftumor <- (koffwt + koffmt) / 2 # Average of mutation and wild-type (50/50 ratioexpression on tumor)
+
+
+#Physiological parameters-------------------------------------------------------
+Weight   = 87.5          ## (kg) Simulation of population from Vishwanathan (2019), DOI: 10.1002/cpdd.467
+
+###Blood flows (L/min) ###
+CA = 6.5 #Cardiac output source: https://www.ncbi.nlm.nih.gov/pubmed/14506981
+QAdipose      = 0.05  * CA
+QBrain      = 0.12  * CA
+QGut      = 0.15  * CA
+QHeart      = 0.04  * CA
+QKidney      = 0.19  * CA
+QMuscle      = 0.17  * CA
+QPancreas = 1.5 * 0.21   # Q is 1.5 L/L*min (Honka (2014) https://doi.org/10.1210/jc.2013-4369), volume of pancreas is 0.21 L
+QSkin = 0.05 * CA   # https://doi.org/10.1007/s00421-008-0697-7
+QSpleen      = 0.03  * CA
+QHa      = 0.065 * CA   ## Hepatic artery 
+QLung      = 0.97* CA
+Qco      = (5.0/100*CA)   ## coronary vessels 
+QTumor = 0.03* CA
+QLiver    = (QGut + QSpleen + QHa)    ## Blood flow liver
+QRest    = (QLung + QTumor - (QLiver + QKidney + QHeart + QMuscle + QAdipose + QBrain + QPancreas + QSkin ))  ## blood flow rest compartment
+
+###pH values###
+pHbc      <- 7.22        ## Blood cells
+pHp       <- 7.4         ## Plasma
+pHew      <- 7.4         ## Extracellular water
+pHewTu    <- 6.7         ## Extracellular water tumor 
+pHiw      <- 7.0         ## Intracellular water           Tissue input parameters Rodgers et al 2005
+pHlys     <- 5.3         ## Lysosome                        Schmitt et al Extension of the Mechanistic Tissue Distribution Model of Rodgers and Rowland by Systematic Incorporation of Lysosomal Trapping: Impact on Unbound Partition Coefficient and Volume of Distribution Predictions in the Rat (2021)
+H         <- 0.45        ## Hematocrite                    Malcolm & Rowland clinical pharmacokinetics p.503
+
+###Tissue fractional volumes###
+# Definitions: Fiw, Few, Fnl, Fnp, Flys are the tissue-specific fractional tissue volumes of the cellular components 
+# ALB = albumin ratio #only for weak bases
+# tALB = albumin concentration in tissue
+# Flys = fraction lysosomal volume in tissue
+# Fcell = fraction of tissue cells containing lysosomes
+#EGFR = EGFR total tissue concentration in nM
+
+# Adipose
+FewAdipose <- 0.135
+FiwAdipose <- 0.017
+FnlAdipose <- 0.853
+FnpAdipose <- 0.0016
+ALBAdipose <- 0.049
+tALBAdipose <- 0.000693875
+FlysAdipose <- 0.00027   # Schmitt (2021)
+APAdipose <- 0.4   # Schmitt (2021)
+EGFRAdipose <- 1.82   # calculated based on IHC scores
+
+# BLOOD CELL - Schmitt et al.(2019) table 1
+FewBloodcells <- 0 # -> n.a. #fractional tissue volume extracellular water -> wordt niet gebruikt?
+FiwBloodcells <- 0.603       #fractional tissue volume intracellular water
+FnlBloodcells <- 0.0017      #fractional tissue volume neutral lipid 
+FnpBloodcells <- 0.0029      #fractional tissue volume neutral phospholipid
+APBloodcells      <- 0.5         ## acidic phospholipids  in mg/g  
+
+## BRAIN - Schmitt et al.(2019) table 1
+FewBrain      <- 0.162 
+FiwBrain      <- 0.606 
+FnlBrain      <- 0.039 
+FnpBrain      <- 0.0015 
+ALBBrain   <- 0.048               ##Rodgers et al. table 1 2005/2006 Physiologically Based Pharmacokinetic Modelling 2:Predicting the Tissue                                          Distribution of Acids,very Weak Bases, Neutrals and Zwitterions
+tALBBrain <- 0.000679714
+FlysBrain     <- 0.0136 
+APBrain    <- 0.4    
+EGFRBrain <- 0   #Not detected in IHC cells so assumed 0
+
+# Gut  ## schmidt et al (2019) (table I)
+FewGut <- 0.282
+FiwGut <- 0.475
+FnlGut <- 0.038
+FnpGut <- 0.0125
+ALBGut <- 0.158  ## rodgers 2006 (table I)
+tALBGut <- 0.002237392
+FlysGut <- 0.0122   # Schmitt (2021)
+APGut <- 2.41   # Schmitt (2021)
+EGFRGut <- 40.58 #calculated based on IHC scores
+
+# Heart  ## schmidt et al(2019)(table I)
+FewHeart <- 0.320
+FiwHeart <- 0.456
+FnlHeart <- 0.014 * 0.85   # Rodgers 2007 for translational factor
+FnpHeart <- 0.0111 * 1.3   # Rodgers 2007 for translational factor
+ALBHeart <- 0.157  ## rodgers 2006 (table I)
+tALBHeart <- 0.002223231
+FlysHeart <- 0.00322   # Schmitt (2021)
+APHeart <- 2.25 * 1.4  # Schmitt (2021), Rodgers 2007 for translational factor
+EGFRHeart <- 48.44  # calculated based on IHC scores
+
+# KIDNEY - Schmitt et al.(2019) table 1
+FewKidney       <- 0.273 
+FiwKidney       <- 0.466 
+FnlKidney       <- 0.012*3.23        # Rodgers 2007 for translational factor
+FnpKidney       <- 0.0242*0.486      # Rodgers 2007 for translational factor
+FlysKidney      <- 0.0173
+APKidney   <- 5.03*0.486        # human conversion based on fig. 4/table 7 Rodgers (2007) Mechanistic Approaches to Volume of Distribution                                           Predictions: Understanding the Processes
+ALBKidney  <- 0.130             ##Rodgers et al. table 1 2005/2006 Physiologically Based Pharmacokinetic Modelling 2:Predicting the Tissue                                          Distribution of Acids,very Weak Bases, Neutrals and Zwitterions
+tALBKidney <- 0.001840892
+EGFRKidney <- 204.89 # calculated based on IHC scores
+
+## KIDNEY CELL TYPE - Assmus et al. (2017) table 1
+pHlyskid   <- 5.1
+Fkid       <- 0.012
+Fcellkid   <- 1
+
+# LUNG - Schmitt et al.(2019) table 1
+FewLung      <- 0.336  
+FiwLung      <- 0.431 
+FnlLung      <- 0.022*0.4       ## Rodgers 2007 for translational factor
+FnpLung      <- 0.0128*0.238    ## Rodgers 2007 for translational factor
+FlysLung     <- 0.0151         # Schmitt (2021)
+APLung    <- 3.91*0.145      #human conversion based on fig. 4/table 7 Rodgers (2007)
+ALBLung   <- 0.212           ## Rodgers et al. table 1 2005/2006 Physiologically Based Pharmacokinetic Modelling 2:Predicting the Tissue                                         Distribution of Acids,very Weak Bases, Neutrals and Zwitterions
+tALBLung <- 0.00300207
+EGFRLung  <- 1616.87 # # calculated based on IHC scores
+
+## LUNG CELL TYPE - #Assmus et al. 2017 table 1 
+##F: Flys, Fcell: Fcell type, alv: alveolar macrophages, typ: type II cells, res: residual cells, 
+pHlysalv   <- 4.75           ## pH lysosome alveolar macrophages
+pHlystyp   <- 5.1            ## pH lysosome type II cells
+pHlysres   <- 5.1            ## pH lysosome residual cells
+Falv       <- 0.078         ## Fraction alveolar macrophages
+Ftyp       <- 0.03         ## Fraction type II cells
+Fres       <- 0.01          ## Fraction residual cells
+Fcellalv   <- 0.041        ## Fcell type alveolar macrophages
+Fcelltyp   <- 0.083          ## Fcell type, type II cells
+Fcellres   <- 0.876           ## Fcell type residual cells
+Fcellrest  <- 1              ## 
+
+# LIVER - Schmitt et al.(2019) table 1
+FewLiver      <- 0.161 
+FiwLiver      <- 0.560 
+FnlLiver      <- 0.014*2.23     ## Rodgers 2007 for translational factor
+FnpLiver      <- 0.024*0.89     ## Rodgers 2007 for translational factor
+ALBLiver   <- 0.086          ## Rodgers et al. table 1 2005/2006 Physiologically Based Pharmacokinetic Modelling 2:Predicting the Tissue                                         Distribution of Acids,very Weak Bases, Neutrals and Zwitterions
+tALBLiver <- 0.001217821
+FlysLiver     <- 0.0125
+APLiver   <- 4.56           ## human conversion based on fig. 4/table 7 Rodgers (2007)
+EGFRLiver  <- 235.25 ## calculated based on IHC scores
+
+## LIVER CELL TYPE - Assmus et al. 2017 table 1 
+##hep: hepatocytes, kup: kupffer cells, fat: fat-storing cells, end: Endothelial cells, F: Flys
+##F: Flys, Fcell: Fcell type,
+pHlyshep   <- 4.72  
+pHlyskup   <- 4.94  
+pHlysend   <- 5.1             
+pHlysfat   <- 5.1   
+Fhep       <- 0.0082
+Fkup       <- 0.1357
+Fend       <- 0.0686
+Ffat       <- 0.0023
+Fcellhep   <- 0.778
+Fcellkup   <- 0.021
+Fcellend   <- 0.028
+Fcellfat   <- 0.014 
+
+# Muscle
+FewMuscle <- 0.118
+FiwMuscle <- 0.630
+FnlMuscle <- 0.010 * 2.23   # Rodgers 2007 for translational factor
+FnpMuscle <- 0.0072
+ALBMuscle <- 0.064
+tALBMuscle <- 0.000906285
+FlysMuscle <- 0.0011   # Schmitt (2021)
+APMuscle <- 2.42 * 1.4   # Rodgers (2007)
+EGFRMuscle <- 67.74 ## calculated based on IHC scores
+
+# Pancreas  ## schmidt et al (2019)(table I)
+FewPancreas <- 0.120
+FiwPancreas <- 0.664
+FnlPancreas <- 0.041
+FnpPancreas <- 0.0093
+ALBPancreas <- 0.060  ## rodgers 2006 (table I)
+tALBPancreas <- 0.000849642
+FlysPancreas <- 0.012957   # Mean of all other reported organ values since not measured (Schmitt 2021)
+APPancreas <- 1.67   # SChmitt (2021)
+EGFRPancreas <- 281.17  # calculated based on IHC scores
+
+# PLASMA - Schmitt et al.(2019) table 1
+FnlPlasma <- 0 # -> n.a.
+FnpPlasma <- 0 # -> n.a. 
+
+# Skin  ## schmidt et al (2019)(table I)
+FewSkin <- 0.382
+FiwSkin <- 0.291
+FnlSkin <- 0.060
+FnpSkin <- 0.0044
+ALBSkin <- 0.277  ## rodgers 2006 (table I)
+tALBSkin <- 0.003922516
+FlysSkin <- 0.0016   # Schmitt (2021)
+APSkin <- 1.32   # Schmitt (2021)
+EGFRSkin <- 120.34 # calculated based on IHC scores
+
+# SPLEEN - Schmitt et al.(2019) table 1
+FewSpleen       <- 0.207
+FiwSpleen       <- 0.526 
+FnlSpleen       <- 0.0077*2.77         ## Rodgers 2007 for translational factor
+FnpSpleen       <- 0.0113*1.55         ## Rodgers 2007 for translational factor
+FlysSpleen      <- 0.0527
+APSpleen   <- 3.18                ## human conversion based on fig. 4/table 7 Rodgers (2007)
+ALBSpleen  <- 0.097               ## Rodgers et al. table 1 2005/2006 Physiologically Based Pharmacokinetic Modelling 2:Predicting the Tissue                                         Distribution of Acids,very Weak Bases, Neutrals and Zwitterions
+EGFRSpleen <- 0 #not detected IHC score so assumed 0
+tABLSpleen <- 0.001373588
+
+# Tumor
+FewTumor <- FewLung
+FiwTumor <- FiwLung
+FnlTumor <- FnlLung
+FnpTumor <- FnpLung
+ALBTumor <- ALBLung
+tALBTumor <- tALBLung
+FlysTumor      <- 0.01           ## waarde van residual long cells
+APTumor <- APLung
+EGFRTumor  <-  382.65# # calculated based on IHC scores
+FcellresTumor  <- 1              ## 100% of the residual long cells, see methods Anke
+
+
+### Parameter Dataframes ###
+
+# Parameters Basis
+Parameters_basis <- data.frame(
+  "Tissue"      = c("Blood cells", "Adipose", "Brain", "Gut", "Heart", "Kidney", "Liver", "Lung", "Muscle", "Pancreas", "Plasma", "Skin", "Spleen", "Tumor"),
+  "Fnl"         = c(FnlBloodcells, FnlAdipose, FnlBrain, FnlGut, FnlHeart,  FnlKidney, FnlLiver,  FnlLung, FnlMuscle, FnlPancreas, FnlPlasma, FnlSkin, FnlSpleen,  FnlTumor),
+  "Fnp"         = c(FnpBloodcells, FnpAdipose, FnpBrain, FnpGut, FnpHeart,  FnpKidney, FnpLiver,  FnpLung, FnpMuscle, FnpPancreas, FnpPlasma, FnpSkin,FnpSpleen, FnpTumor),
+  "Few"         = c(0, FewAdipose, FewBrain, FewGut, FewHeart,  FewKidney, FewLiver,  FewLung, FewMuscle, FewPancreas, 0, FewSkin, FewSpleen,  FewTumor),
+  "Fiw"         = c(FiwBloodcells, FiwAdipose, FiwBrain, FiwGut, FiwHeart,  FiwKidney, FiwLiver,  FiwLung, FiwMuscle, FiwPancreas, 0, FiwSkin, FiwSpleen, FiwTumor),
+  "ALB"         = c(0, ALBAdipose, ALBBrain, ALBGut, ALBHeart,  ALBKidney, ALBLiver,  ALBLung, ALBMuscle, ALBPancreas, 0, ALBSkin, ALBSpleen, ALBTumor),
+  "tALB"        = c(0, tALBAdipose,  tALBBrain, tALBGut, tALBHeart, tALBKidney, tALBLiver, tALBLung, tALBMuscle, tALBPancreas, 0, tALBSkin, tABLSpleen, tALBTumor),
+  "LogP"        = c(LogP, LogP_V, LogP, LogP, LogP, LogP, LogP, LogP, LogP, LogP, LogP, LogP, LogP, LogP),
+  "Q"           = c(NA, QAdipose, QBrain, QGut, QHeart, QKidney, QLiver, QLung, QMuscle, QPancreas, NA, QSkin, QSpleen, QTumor),
+  "lysosome"    = c(0, FlysAdipose, FlysBrain , FlysGut, FlysHeart, FlysKidney, FlysLiver, FlysLung, FlysMuscle, FlysPancreas, 0, FlysSkin, FlysSpleen, FlysTumor),
+  "AP"          = c(APBloodcells, APAdipose, APBrain, APGut, APHeart, APKidney, APLiver, APLung, APMuscle, APPancreas, 0, APSkin, APSpleen,APTumor),
+  "EGFR"        = c(0, EGFRAdipose, EGFRBrain, EGFRGut, EGFRHeart, EGFRKidney, EGFRLiver, EGFRLung, EGFRMuscle, EGFRPancreas, 0, EGFRSkin, EGFRSpleen, EGFRTumor)         
+)
+
+
+#Parameters Lysosomes
+Parameters_lysosome <- data.frame(
+  "Cell type"           =c("alveolar macrophages", "type II cells", "residual cells", "hepatocytes", "kupffer cells", "fat-storing cells", "Endothelial cells", "Total kidney cells", "Adipose", "Brain", "Gut", "Heart", "Muscle", "Skin", "Spleen", "Tumor", "Pancreas"),
+  "Fiw"                 =c(FiwLung, FiwLung, FiwLung, FiwLiver, FiwLiver, FiwLiver, FiwLiver, FiwKidney, FiwAdipose, FiwBrain, FiwGut, FiwHeart, FiwMuscle, FiwSkin, FiwSpleen, FiwTumor, FiwPancreas),
+  "AP"                  =c(APLung, APLung, APLung, APLiver, APLiver, APLiver, APLiver, APKidney, APAdipose, APBrain, APGut, APHeart, APMuscle, APSkin, APSpleen, APLung, APPancreas),
+  "Fnl"                 =c(FnlLung, FnlLung, FnlLung, FnlLiver, FnlLiver, FnlLiver, FnlLiver, FnlKidney, FnlAdipose, FnlBrain, FnlGut, FnlHeart, FnlMuscle, FnlSkin, FnlSpleen, FnlTumor, FnlPancreas),
+  "Fnp"                 =c(FnpLung, FnpLung, FnpLung, FnpLiver, FnpLiver, FnpLiver, FnpLiver, FnpKidney, FnpAdipose, FnpBrain, FnpGut, FnpHeart, FnpMuscle, FnpSkin, FnpSpleen, FnpTumor, FnpPancreas),
+  "pH"                  =c(pHlysalv, pHlystyp, pHlysres, pHlyshep, pHlyskup, pHlysfat, pHlysend, pHlyskid, pHlys, pHlys, pHlys, pHlys, pHlys, pHlys, pHlys, pHlysres, pHlys),
+  "Fraction"            =c(Falv, Ftyp, Fres, Fhep, Fkup, Ffat, Fend, Fkid, FlysAdipose, FlysBrain, FlysGut, FlysHeart, FlysMuscle, FlysSkin, FlysSpleen, FlysTumor, FlysPancreas),
+  "F"                   =c(Fcellalv, Fcelltyp, Fcellres, Fcellhep, Fcellkup, Fcellfat, Fcellend, Fcellkid, 1, 1, 1, 1, 1, 1, 1, Fcellrest, 1) 
+)
+
+# Parameters without Bloodcells
+Parameters <- Parameters_basis %>%
+    filter(!Tissue == "Blood cells") %>%
+    filter(!Tissue == "Plasma") #%>%
+
+Parameters_Tissues <- Parameters_basis %>%
+  #filter(!Tissue == "Tumor") %>%
+  filter(!Tissue == "Blood cells") %>%
+  filter(!Tissue == "Plasma")
+
+### Tissue volumes (L) ### 
+#source: https://www.ncbi.nlm.nih.gov/pubmed/14506981 & Rodgers (2007) DOI: 10.1007/s11095-006-9210-3
+## Glassman (2016), DOI: 10.1007/s10928-016-9482-0
+#Adipose
+Vad      = 10.43               ## Adipose, Rodgers (2007)
+Vad_int = Vad * FiwAdipose
+Vad_rest = Vad - Vad_int
+
+#Blood
+Vbl      = 5.6                 ## Blood, Rodgers (2007)
+
+#Brain
+Vbr      = 1.49                ## Brain, Rodgers (2007)
+
+#Gut
+Vgu      = 1.85                ## Gut, Rodgers (2007)
+VguLumen = 0.35                ## Gut lumen
+VguWall  = 1.5                 ## Gut wall = Vgu - vgulumen
+Vgu_int  = VguWall * FiwGut    ## Gut, intracellular water
+Vgu_rest = VguWall - Vgu_int   ## Gut, no intracellular water
+
+#Heart
+Vhe      = 0.31                ## Heart, Rodgers (2007)
+Vhe_int  = Vhe * FiwHeart
+Vhe_rest = Vhe - Vhe_int
+
+#Kidney
+Vki      = 0.31                ## Kidneys, Rodgers (2007)
+Vki_int  = Vki * FiwKidney
+Vki_rest = Vki - Vki_int
+
+#Liver
+Vli      = 2.52                ## Liver, Rodgers (2007)
+Vli_int  = Vli * FiwLiver      ## Liver, intracellular water
+Vli_rest = Vli - Vli_int       ## Liver, no intracellular water
+#Lung
+Vlu      = 0.92 * 0.95         ## Lungs, 95% of value in Rodgers (2007). Other 5% is lung tumor volume
+Vlu_int  = Vlu * FiwLung       ## Lungs, intracellular water
+Vlu_rest = Vlu - Vlu_int       ## Lungs, no intracellular water
+
+#Muscle
+Vmu      = 33.89               ## Muscle, Rodgers (2007)
+Vmu_int  = Vmu * FiwMuscle
+Vmu_rest = Vmu - Vmu_int
+
+#Pancreas
+Vpa      = 0.21                ## Pancreas, Rodgers (2007)
+Vpa_int = Vpa * FiwPancreas
+Vpa_rest = Vpa - Vpa_int
+
+#Skin
+Vsk      = 5.63                ## Skin, Rodgers (2007)
+Vsk_int  = Vsk * FiwSkin
+Vsk_rest = Vsk - Vsk_int
+
+#Spleen
+Vsp      = 0.20                ## Spleen, Rodgers (2007)
+
+#Tumor
+Vtumor   = 0.92 * 0.05         ## Tumor, 5% of total lung volume (0.92L), calculated as 3% * 1.7 (factor to correct for cell density as determined by AMC pathologist)
+Vtu_int  = (Vtumor * FiwTumor)    ## tumor, intracellular water
+Vtu_rest = (Vtumor - Vtu_int ) ## tumor,
+
+## Additional Volume derivations
+Vve    = (0.705*Vbl)    ##  Venous blood
+Var    = (0.295*Vbl)    ##  Arterial blood
+Vre    = (Weight - (Vli + Vki + Vsp + Vhe + Vlu + Vbr + Vmu + Vad + VguWall + Vpa + Vsk + Vtumor + Vbl)) ## Volume rest of the body compartment (1kg ~ 1L)
+Vtot     = (Vad + Vbr + VguWall +  Vhe + Vki + Vli + Vlu + Vmu + Vsp + Vbl + Vpa + Vpa + Vtumor + Vre) ## Total body volume 
+
+
+#Clearance
+#Retrograde approach to recover metabolic intrinsic clearance Reddy et al at appendix 1
+CL_tot <-(14.75 *0.819)/60   # Vishwanathan BJCP (2017) iso geometric mean of 14.75 L/h. The fraction absorbed (0.819) 
+CL_R <- 0.235/60 #Transformed to L/min, Reddy (2018)
+CL_H <- CL_tot * 0.86
+CL_int_lit <- (CL_H * QLiver) / ((QLiver * Fu) - (CL_H * Fu))  #intrinsic clearance as found in literaturetest
