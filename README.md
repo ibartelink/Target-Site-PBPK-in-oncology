@@ -17,10 +17,9 @@ _Applications_: Prediction of target-site PK, dose optimization, and theranostic
 
 
 **Structure**
-The model is structure to include first all parameters that are used in the modeling. In case of small molecules the model PK predicitions are derived for each tissue, ordered as A.
+The model is structure to include first all parameters that are used in the modeling for PK. In case of small molecules the model PK predicitions are derived for each tissue, ordered as A - the KP prediction.
 Then physiological parameters are listed under B.
 Finally the full model code including all differential equations per tissue compartment are included in C.
-
 
 **How to use**
 The models were created in R: 4.3.2. Rstudio development environment (version 2023.12.1 ) with the DeSolve package (version 1.40). 
