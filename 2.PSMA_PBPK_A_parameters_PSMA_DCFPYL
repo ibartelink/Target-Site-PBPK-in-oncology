@@ -1,0 +1,711 @@
+#2. PSMA PBPK Parameter initialisation (no patient data)
+#parameters differ between PSMA and DCFPyL####    
+if(PSMA == TRUE){
+  Spec_activity <- 82000
+  #Spec_activity   <- 71700
+  k_on          <- 0.09        
+  KD            <- 1
+  k_off         <- KD * k_on
+}else{
+  Spec_activity <- 45000       # kBq/nmol
+  k_on          <- 0.09        # L/nmol*min
+  KD            <- 0.49        # nmol/L
+  k_off         <- KD * k_on   # min^-1
+  }
+Dose_nmol_P        <- Dose_activity / Spec_activity  #kBq / kBq/nmol
+
+#Total volumes, liters####
+TTV              <- 0.0214  
+
+{
+P_Model_DCFPYLF18 <- unlist(c(data.frame(
+#total volumes organs, liters####
+V_tot_ven     = 0.0452 * BW, #Bron anders
+V_tot_art     = 0.0224 * BW, #Bron anders
+V_tot_lu      = BW / 71, # Liters
+
+V_tot_pro     = (0.016 * BW) / 71, # Liters 
+V_tot_kid     = 0.309, #begum 
+V_tot_li      = 1.533, #begum 
+V_tot_spl     = 0.201, #begum 
+V_tot_gi      = ((0.385 + 0.548 + 0.104 + 0.15) * BW) / 71, #GI + Pancreas. Berekening uit Begum 2017. 
+V_tot_par     = 0.0406,
+V_tot_sm      = 0.0152,
+V_tot_lg      = 0.000727, 
+V_tot_rm      = (1.1 * BW) / 71, 
+V_tot_mu      = (30.078 * BW) / 71, 
+V_tot_sk      = (3.408 * BW) / 71, 
+V_tot_br      = (1.45 * BW) / 71,   
+V_tot_ad      = (13.465 * BW) / 71,
+V_tot_hrt     = (0.341 * BW) / 71, 
+V_tot_bo      = ((10.165 * BW) / 71) - ((1.1 * BW) / 71), 
+V_tot_bw      = BW
+)))
+
+V_tot_ven     <- 0.0452 * BW #Bron anders  
+V_tot_art     <- 0.0224 * BW #Bron anders
+V_tot_lu      <- BW / 71 # Liters
+
+V_tot_pro     <- (0.016 * BW) / 71 # Liters 
+V_tot_kid     <- 0.309 #begum 
+V_tot_li      <- 1.533 #begum 
+V_tot_spl     <- 0.201 #begum 
+V_tot_gi      <- ((0.385 + 0.548 + 0.104 + 0.15) * BW) / 71 #GI + Pancreas. Berekening uit Begum 2017. 
+V_tot_par     <- 0.0406
+V_tot_sm      <- 0.0152
+V_tot_lg      <- 0.000727 
+V_tot_rm      <- (1.1 * BW) / 71 
+V_tot_mu      <- (30.078 * BW) / 71 
+V_tot_sk      <- (3.408 * BW) / 71 
+V_tot_br      <- (1.45 * BW) / 71   
+V_tot_ad      <- (13.465 * BW) / 71
+V_tot_hrt     <- (0.341 * BW) / 71 
+V_tot_bo      <- ((10.165 * BW) / 71) - ((1.1 * BW) / 71) 
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+V_tot_rest    = BW  - sum(
+  V_tot_ven, 
+  V_tot_art,
+  V_tot_lu, 
+  V_tot_tu1,
+  V_tot_tu2,
+  V_tot_tu_rest,
+  V_tot_pro, 
+  V_tot_kid, 
+  V_tot_li,
+  V_tot_spl, 
+  V_tot_gi, 
+  V_tot_par, 
+  V_tot_sm, 
+  V_tot_lg, 
+  V_tot_rm, 
+  V_tot_mu, 
+  V_tot_sk, 
+  V_tot_br, 
+  V_tot_ad, 
+  V_tot_hrt, 
+  V_tot_bo) 
+))))
+
+V_tot_rest    <- BW  - sum(
+  V_tot_ven, 
+  V_tot_art,
+  V_tot_lu, 
+  V_tot_tu1,
+  V_tot_tu2,
+  V_tot_tu_rest,
+  V_tot_pro, 
+  V_tot_kid, 
+  V_tot_li,
+  V_tot_spl, 
+  V_tot_gi, 
+  V_tot_par, 
+  V_tot_sm, 
+  V_tot_lg, 
+  V_tot_rm, 
+  V_tot_mu, 
+  V_tot_sk, 
+  V_tot_br, 
+  V_tot_ad, 
+  V_tot_hrt, 
+  V_tot_bo)
+
+#Vascular volumes, liters####
+#Fraction Vascular volumes, vasc/tot, ratio
+Fra_v_vasc_tu    <- 0.05 * (1 - H)
+Fra_v_vasc_lu    <- 0.055 # shah
+Fra_v_vasc_kid   <- 0.055
+Fra_v_vasc_li    <- 0.085 
+Fra_v_vasc_spl   <- 0.12 
+
+#Serum volumes, liters
+V_ser_body     <- 2.8 * (1 - 0.4) * BSA
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+V_ser_ven      = (0.18 * V_ser_body ) + (0.045 * V_ser_body ), 
+V_ser_art      = (0.06 * V_ser_body ) + (0.045 * V_ser_body ),
+
+V_vasc_lu      = 0.105 * V_ser_body,
+V_vasc_tu1     = V_tot_tu1 * Fra_v_vasc_tu, 
+V_vasc_tu2     = V_tot_tu2 * Fra_v_vasc_tu, 
+V_vasc_tu_rest = V_tot_tu_rest * Fra_v_vasc_tu,
+V_vasc_pro     = 0.004 * (1 - H) * V_tot_pro,
+V_vasc_kid     = V_tot_kid * Fra_v_vasc_kid,
+V_vasc_li     = V_tot_li * Fra_v_vasc_li,
+V_vasc_spl     = V_tot_spl * Fra_v_vasc_spl,
+V_vasc_gi      = 0.076 * V_ser_body,
+V_vasc_par     = 0.03 * (1 - H) * V_tot_par,
+V_vasc_sm      = 0.03 * (1 - H) * V_tot_sm,
+V_vasc_lg      = 0.03 * (1 - H) * V_tot_lg,
+V_vasc_rm      = 0.04 * V_ser_body, 
+V_vasc_mu     = 0.14 * V_ser_body, 
+V_vasc_sk      = 0.03 * V_ser_body, 
+V_vasc_br      = 0.012 * V_ser_body, 
+V_vasc_ad      = 0.05 * V_ser_body, 
+V_vasc_hrt     = 0.01 * V_ser_body
+))))
+
+V_vasc_rm      <- 0.04 * V_ser_body
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+V_vasc_bo      = (0.07 * V_ser_body ) - V_vasc_rm
+))))
+
+V_ser_ven      <- (0.18 * V_ser_body ) + (0.045 * V_ser_body )
+V_ser_art      <- (0.06 * V_ser_body ) + (0.045 * V_ser_body )
+
+V_vasc_lu      <- 0.105 * V_ser_body
+V_vasc_tu1     <- V_tot_tu1 * Fra_v_vasc_tu
+V_vasc_tu2     <- V_tot_tu2 * Fra_v_vasc_tu
+V_vasc_tu_rest <- V_tot_tu_rest * Fra_v_vasc_tu
+V_vasc_pro     <- 0.004 * (1 - H) * V_tot_pro
+V_vasc_kid     <- V_tot_kid * Fra_v_vasc_kid
+V_vasc_li      <- V_tot_li * Fra_v_vasc_li
+V_vasc_spl     <- V_tot_spl * Fra_v_vasc_spl
+V_vasc_gi      <- 0.076 * V_ser_body
+V_vasc_par     <- 0.03 * (1 - H) * V_tot_par
+V_vasc_sm      <- 0.03 * (1 - H) * V_tot_sm
+V_vasc_lg      <- 0.03 * (1 - H) * V_tot_lg
+
+V_vasc_mu     <- 0.14 * V_ser_body
+V_vasc_sk      <- 0.03 * V_ser_body
+V_vasc_br      <- 0.012 * V_ser_body
+V_vasc_ad      <- 0.05 * V_ser_body
+V_vasc_hrt     <- 0.01 * V_ser_body
+V_vasc_bo      <- (0.07 * V_ser_body ) - V_vasc_rm
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+V_vasc_rest    = V_ser_body  - sum(
+    V_ser_ven,
+    V_ser_art,
+    V_vasc_lu,
+    V_vasc_tu1,
+    V_vasc_tu2,
+    V_vasc_tu_rest,
+    V_vasc_pro,
+    V_vasc_kid,
+    V_vasc_li,
+    V_vasc_spl,
+    V_vasc_gi,
+    V_vasc_par,
+    V_vasc_sm,
+    V_vasc_lg,
+    V_vasc_rm,
+    V_vasc_mu, 
+    V_vasc_sk,
+    V_vasc_br,
+    V_vasc_ad,
+    V_vasc_hrt,
+    V_vasc_bo)
+))))
+
+V_vasc_rest    <- V_ser_body  - sum(
+  V_ser_ven,
+  V_ser_art,
+  V_vasc_lu,
+  V_vasc_tu1,
+  V_vasc_tu2,
+  V_vasc_tu_rest,
+  V_vasc_pro,
+  V_vasc_kid,
+  V_vasc_li,
+  V_vasc_spl,
+  V_vasc_gi,
+  V_vasc_par,
+  V_vasc_sm,
+  V_vasc_lg,
+  V_vasc_rm,
+  V_vasc_mu, 
+  V_vasc_sk,
+  V_vasc_br,
+  V_vasc_ad,
+  V_vasc_hrt,
+  V_vasc_bo)
+#Interstitial volumes, liters####
+
+#Fra_k_off waarden, int/to= ratio, 
+Fra_v_int_lu      <- 0.3
+Fra_v_int_tu      <- 0.38 # Ratio
+Fra_v_int_kid     <- 0.15 # Ratio
+Fra_v_int_li     <- 0.2 # Ratio
+Fra_v_int_spl     <- 0.2 # Ratio
+Fra_v_int_gi      <- 0.1739634 
+Fra_v_int_rest    <- 0.1712696
+
+# Alpha waarden, V_int/V_vasc, ratio
+Alpha_rm    <- 3.7  
+Alpha_mu   <- 5.9 
+Alpha_sk    <- 8.9
+Alpha_ad    <- 15.5
+Alpha_hrt   <- 3.7 
+Alpha_bo    <- 8.4
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+V_int_lu      = V_tot_lu * Fra_v_int_lu, 
+V_int_tu1     = V_tot_tu1 * Fra_v_int_tu,
+V_int_tu2     = V_tot_tu2 * Fra_v_int_tu,
+V_int_tu_rest = V_tot_tu_rest * Fra_v_int_tu,
+V_int_pro     = 0.25 * V_tot_pro,
+V_lumen       = V_tot_kid * Fra_v_int_kid, #interstitial space = lumen for kidney
+V_int_li     = V_tot_li * Fra_v_int_li,
+V_int_spl     = V_tot_spl * Fra_v_int_spl,
+V_int_gi      = V_tot_gi * Fra_v_int_gi,
+V_int_par     = 0.23 * V_tot_par,
+V_int_sm      = 0.23 * V_tot_sm,
+V_int_lg      = 0.23 * V_tot_lg,
+V_int_rm      = V_vasc_rm * Alpha_rm, 
+V_int_mu     = V_vasc_mu * Alpha_mu,
+V_int_sk      = V_vasc_sk * Alpha_sk,
+V_int_ad      = V_vasc_ad * Alpha_ad,
+V_int_hrt     = V_vasc_hrt * Alpha_hrt,
+V_int_bo      = V_vasc_bo * Alpha_bo,
+V_int_rest    = V_tot_rest * Fra_v_int_rest
+))))
+
+#Flow, L/min####
+#Flow density organ, mL/min*g
+F_dens_tu1       <- 0.260656
+F_dens_tu2       <- 0.260656     #FTu2_mn. Berekent met waarden uit Begum. Zie eind van bestand.
+X_F              <- 0.53
+F_dens_tu_rest   <- X_F * ((F_dens_tu1 + F_dens_tu2)/2)  
+
+F_dens_pro       <- 0.18 * (1 - H) # mL/min*g 
+F_dens_par       <- 0.16 
+F_dens_sm        <- F_dens_par
+F_dens_lg        <- F_dens_par
+
+#Flow density kidney, mL/min*g
+F_age_in         <- 4.3                         #age independent kidneyflow
+F_age_dep        <- F_age_in - (0.026 * age)    #age dependent kidneyflow
+
+F_tot     <- V_ser_body  * 1.23                  #where does "1.23" come from?, klopt wel
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+F_lu      = F_tot,
+F_tu1     = F_dens_tu1 * V_tot_tu1,
+F_tu2     = F_dens_tu2 * V_tot_tu2,
+F_tu_rest = F_dens_tu_rest * V_tot_tu_rest,
+F_pro     = F_dens_pro * V_tot_pro,
+F_kid     = F_age_dep * V_tot_kid * (1 - H),
+F_li      = 0.065 * F_tot,
+F_spl     = 0.03 * F_tot,
+F_gi      = 0.16 * F_tot,
+F_par     = F_dens_par * V_tot_par,
+F_sm      = F_dens_sm * V_tot_sm,
+F_lg      = F_dens_lg * V_tot_lg,
+F_rm      = 0.03 * F_tot,
+F_mu      = 0.17 * F_tot,
+F_sk      = 0.05 * F_tot,
+F_br      = 0.12 * F_tot,
+F_ad      = 0.05 * F_tot,
+F_hrt     = 0.04 * F_tot,
+F_bo      = 0.05 * F_tot
+))))
+
+F_lu      <- F_tot
+F_tu1     <- F_dens_tu1 * V_tot_tu1
+F_tu2     <- F_dens_tu2 * V_tot_tu2
+F_tu_rest <- F_dens_tu_rest * V_tot_tu_rest
+F_pro     <- F_dens_pro * V_tot_pro
+F_kid     <- F_age_dep * V_tot_kid * (1 - H)     #is de H en de F_age_dep beide afhankelijk van age, niet dubbelop?
+F_li      <- 0.065 * F_tot
+F_spl     <- 0.03 * F_tot
+F_gi      <- 0.16 * F_tot
+F_par     <- F_dens_par * V_tot_par
+F_sm      <- F_dens_sm * V_tot_sm
+F_lg      <- F_dens_lg * V_tot_lg
+F_rm      <- 0.03 * F_tot
+F_mu      <- 0.17 * F_tot
+F_sk      <- 0.05 * F_tot
+F_br      <- 0.12 * F_tot
+F_ad      <- 0.05 * F_tot
+F_hrt     <- 0.04 * F_tot
+F_bo      <- 0.05 * F_tot
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+F_rest    = F_tot - sum(
+    F_tu1,
+    F_tu2,
+    F_tu_rest,
+    F_pro,
+    F_kid,
+    F_li,
+    F_spl,
+    F_gi,
+    F_par,
+    F_sm,
+    F_lg,
+    F_rm,
+    F_mu,
+    F_sk,
+    F_br,
+    F_ad,
+    F_hrt,
+    F_bo)
+))))
+
+#special kidney flows
+Phi_kid    <- 0.66  
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+F_fil      = eGFR * Phi_kid       #phi_kid = fil/eGFR       depending on patient data
+))))
+F_fil      <- eGFR * Phi_kid
+
+Fra_f_ex   <- 0.96 #base = 1       ratio ex/fil
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+F_ex       = (F_fil * Fra_f_ex) 
+))))
+F_ex       <- (F_fil * Fra_f_ex)
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+F_ret      = (F_fil - F_ex)       #what is left over after excretion and filtration is reabsorbed back to the lumen
+))))
+F_ret      <- (F_fil - F_ex)
+
+# Permeability####
+#Permeability surface * organ mass, ml/min*g
+k_mu   <- 0.02
+k_lu    <- k_mu * 100
+k_tu    <- 0.6 #original
+k_pro   <- 0.1
+k_li   <- k_mu * 100
+k_spl   <- k_li
+k_gi    <- 0.02
+k_par   <- 0.4
+k_sm    <- k_par
+k_lg    <- k_par  
+k_rm    <- k_li
+k_sk    <- 0.02
+k_ad    <- 0.02
+k_hrt   <- 0.02
+k_bo    <- 0.02
+k_rest  <- 0.02
+
+#PS values, L/min
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+PS_lu      = k_lu  * V_tot_lu, 
+PS_tu1     = k_tu  * V_tot_tu1,
+PS_tu2     = k_tu  * V_tot_tu2,
+PS_tu_rest = k_tu  * V_tot_tu_rest,
+PS_pro     = k_pro * V_tot_pro,
+PS_li      = k_li  * V_tot_li,
+PS_spl     = k_spl * V_tot_spl, 
+PS_gi      = k_gi  * V_tot_gi,
+PS_par     = k_par * V_tot_par, 
+PS_sm      = k_sm  * V_tot_sm,
+PS_lg      = k_lg  * V_tot_lg, 
+PS_rm      = k_rm  * V_tot_rm,  
+PS_mu      = k_mu  * V_tot_mu,  
+PS_sk      = k_sk  * V_tot_sk,  
+PS_ad      = k_ad  * V_tot_ad,
+PS_hrt     = k_hrt * V_tot_hrt, 
+PS_bo      = k_bo  * V_tot_bo,
+PS_rest    = k_rest* V_tot_rest 
+))))
+
+#lambda's, min^-1####
+#Internalization ratios
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+lambda_int_tu      = 0.001 #base value  
+))))
+lambda_int_tu      <- 0.001
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+lambda_int_tu_rest  = lambda_int_tu,
+
+lambda_int_nt      = lambda_int_tu, 
+lambda_int_pro     = lambda_int_tu, 
+lambda_int_kid     = lambda_int_tu, 
+lambda_int_li      = lambda_int_tu, 
+lambda_int_spl     = lambda_int_tu, 
+lambda_int_gi      = lambda_int_tu, 
+lambda_int_par     = lambda_int_tu, 
+lambda_int_sm      = lambda_int_tu,
+lambda_int_lg      = lambda_int_tu
+))))
+
+#externalization ratios
+lambda_ext_tu      <- 1.4e-4
+lambda_ext_kid     <- 2.3e-4
+lambda_ext_par     <- 0.00037      
+
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+lambda_ext_tu_rest = lambda_ext_tu,
+
+lambda_ext_nt      = lambda_ext_kid, 
+lambda_ext_pro     = lambda_ext_kid,
+lambda_ext_li      = lambda_ext_kid, 
+lambda_ext_spl     = lambda_ext_kid,
+lambda_ext_gi      = lambda_ext_kid, 
+
+lambda_ext_sm      = lambda_ext_par, 
+lambda_ext_lg      = lambda_ext_par 
+))))
+#receptors, nmol####
+#receptor density, nmol/L
+X_R               <- 1.4      #assumed/actual R_dens
+
+#waar komen deze values vandaan?
+R_dens_tu1        <- mean(c(87, 73, 78, 78, 33, 46, 17, 60, 45, 68, 41, 10, 19))
+R_dens_tu2        <- mean(c(94, 52, 87, 87, 64, 27, 33, 43, 63, 21, 23, 18, 87))
+
+R_dens_tu_rest    <- X_R * ((R_dens_tu1 + R_dens_tu2) /2)    
+R_dens_pro        <- R_dens_tu_rest * 0.1
+R_dens_kid        <- 18
+R_dens_li        <- R_dens_pro * 0.05      
+R_dens_spl        <- R_dens_kid * 0.2      
+R_dens_gi         <- R_dens_pro * 0.06      
+R_dens_par        <- 42                     
+#R_dens_par        <- 21    
+R_dens_sm         <- R_dens_par             
+R_dens_lg         <- R_dens_par             
+
+
+# Receptor
+P_Model_DCFPYLF18 <- append(P_Model_DCFPYLF18, unlist(c(data.frame(
+R_tot_tu1         = R_dens_tu1 * V_tot_tu1, 
+R_tot_tu2         = R_dens_tu2 * V_tot_tu2,
+R_tot_tu_rest     = R_dens_tu_rest * V_tot_tu_rest,
+R_tot_pro         = R_dens_pro * V_tot_pro,
+R_tot_kid         = R_dens_kid * V_tot_kid,
+R_tot_li         = R_dens_li * V_tot_li,
+R_tot_spl         = R_dens_spl * V_tot_spl,
+R_tot_gi          = R_dens_gi * V_tot_gi,
+R_tot_par         = R_dens_par * V_tot_par,
+#R_tot_par_upreg   = R_dens_par * V_tot_par   komt verder niet in code voor
+R_tot_sm          = R_dens_sm * V_tot_sm,
+R_tot_lg          = R_dens_lg * V_tot_lg, 
+
+k_on,
+k_off,
+Dose_activity,
+Dose_nmol_P,
+Spec_activity
+))))
+
+P_Parameters_DCFPYLF18 <- unlist(c(data.frame(
+  Fra_v_vasc_lu, Fra_v_vasc_tu, Fra_v_vasc_kid, Fra_v_vasc_li, Fra_v_vasc_spl,
+  Fra_v_int_lu, Fra_v_int_tu, Fra_v_int_kid, Fra_v_int_li, Fra_v_int_spl, Fra_v_int_gi, Fra_v_int_rest,
+  Alpha_rm, Alpha_mu, Alpha_sk, Alpha_ad, Alpha_hrt, Alpha_bo,
+  F_dens_pro, F_dens_par, F_dens_sm, F_dens_lg, F_age_in, F_age_dep,
+  Phi_kid, Fra_f_ex,
+  k_lu, k_tu, k_mu, k_pro, k_li, k_spl, k_gi, k_par, k_sm, k_lg, k_rm, k_sk, k_ad, k_hrt, k_bo, k_rest,
+  R_dens_tu1, R_dens_tu2, R_dens_tu_rest, R_dens_pro, R_dens_kid, R_dens_li, R_dens_spl, R_dens_gi, R_dens_par, R_dens_sm, R_dens_lg,
+  X_F, X_R, XV
+)))
+#assign all values to the workspace to run the dataframe and ODE
+for (name in names(P_Model_DCFPYLF18)){
+  assign(name,P_Model_DCFPYLF18[name])
+  }
+}
+
+#dataframe####
+
+P_Body_DCFPYLF18 <- data.frame(
+  V_tot = c(V_tot_lu, V_tot_tu1, V_tot_tu2, V_tot_tu_rest, V_tot_pro, V_tot_kid, V_tot_li, V_tot_spl, V_tot_gi, V_tot_par, V_tot_sm, V_tot_lg, V_tot_rm, V_tot_mu, V_tot_sk, V_tot_br, V_tot_ad, V_tot_hrt, V_tot_bo, V_tot_rest, NA),
+  V_vasc = c(V_vasc_lu, V_vasc_tu1, V_vasc_tu2, V_vasc_tu_rest, V_vasc_pro, V_vasc_kid, V_vasc_li, V_vasc_spl, V_vasc_gi, V_vasc_par, V_vasc_sm, V_vasc_lg, V_vasc_rm, V_vasc_mu, V_vasc_sk, V_vasc_br, V_vasc_ad, V_vasc_hrt, V_vasc_bo, V_vasc_rest, NA),
+  V_int = c(V_int_lu, V_int_tu1, V_int_tu2, V_int_tu_rest, V_int_pro, NA, V_int_li, V_int_spl, V_int_gi, V_int_par, V_int_sm, V_int_lg, V_int_rm, V_int_mu, V_int_sk, NA, V_int_ad, V_int_hrt, V_int_bo, V_int_rest, NA),
+  V_lumen = c(NA, NA, NA, NA, NA, V_lumen, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  PS = c(PS_lu, PS_tu1, PS_tu2, PS_tu_rest, PS_pro, NA, PS_li, PS_spl, PS_gi, PS_par, PS_sm, PS_lg, PS_rm, PS_mu, PS_sk, NA, PS_ad, PS_hrt, PS_bo, PS_rest, NA),
+  lambda_int = c(NA, lambda_int_tu, lambda_int_tu, lambda_int_tu_rest, lambda_int_pro, lambda_int_kid, lambda_int_li, lambda_int_spl, lambda_int_gi, lambda_int_par, lambda_int_sm, lambda_int_lg, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  lambda_ext = c(NA, lambda_ext_tu, lambda_ext_tu, lambda_ext_tu_rest, lambda_ext_pro, lambda_ext_kid, lambda_ext_li, lambda_ext_spl, lambda_ext_gi, lambda_ext_par, lambda_ext_sm, lambda_ext_lg, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  Flow = c(F_lu, F_tu1, F_tu2, F_tu_rest, F_pro, F_kid, F_li, F_spl, F_gi, F_par, F_sm, F_lg, F_rm, F_mu, F_sk, F_br, F_ad, F_hrt, F_bo, F_rest, F_tot),
+  F_fil = c(NA, NA, NA, NA, NA, F_fil, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  F_ex = c(NA, NA, NA, NA, NA, F_ex, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  F_ret = c(NA, NA, NA, NA, NA, F_ret, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  R_tot_org = c(NA, R_tot_tu1, R_tot_tu2, R_tot_tu_rest, R_tot_pro, R_tot_kid, R_tot_li, R_tot_spl, R_tot_gi, R_tot_par, R_tot_sm, R_tot_lg, NA, NA, NA, NA, NA, NA, NA, NA, NA)
+)
+
+row_names <- c('lung', 'tu1', 'tu2', 'tu_rest', 'pro', 'kid', 'li', 'spl', 'gi', 'par', 'sm', 'lg', 'rm', 'mu', 'sk', 'br', 'ad', 'hrt', 'bo', 'rest','body_total')
+rownames(P_Body_DCFPYLF18) <- row_names 
+  
+##################################Initial values
+
+Initial_DCFPYLF18 <- c()
+#long version
+{Initial_DCFPYLF18 <- c(
+    
+    A_ven            = 0,
+    A_V1             = NA,
+    A_V2             = NA,
+    A_V3             = NA,
+    A_V4             = NA,
+    A_V5             = NA,
+
+    A_art            = 0,
+    A_A1             = NA,
+    A_A2             = NA,
+    A_A3             = NA,
+    A_A4             = NA,
+    A_A5             = NA,
+    
+    A_vasc_lu        = 0,
+    A_int_lu         = 0,
+    A_lumen          = NA,
+    AR_lu            = NA,
+    RF_lu            = NA,
+    A_intern_lu      = NA,
+    
+    
+    A_vasc_tu1       = 0,
+    A_int_tu1        = 0,
+    A_lumen          = NA,
+    AR_tu1           = 0,
+    RF_tu1           = P_Body_DCFPYLF18[2,12],
+    A_intern_tu1     = 0
+  )
+  
+  if(V_tot_tu2 > 0){
+    Initial_DCFPYLF18 <- append(Initial_DCFPYLF18, c(
+      A_vasc_tu2       = 0,
+      A_int_tu2        = 0,
+      A_lumen          = NA,
+      AR_tu2           = 0,
+      RF_tu2           = P_Body_DCFPYLF18[3,12],
+      A_intern_tu2     = 0,    
+      # }
+      # if(V_tot_tu_rest > 0){
+      #   Initial_DCFPYLF18 <-  append(Initial_DCFPYLF18, c(
+      A_vasc_tu_rest   = 0,
+      A_int_tu_rest    = 0,
+      A_lumen          = NA,
+      AR_tu_rest       = 0,
+      RF_tu_rest       = P_Body_DCFPYLF18[4,12],
+      A_intern_tu_rest = 0
+    ))
+  }
+  
+  Initial_DCFPYLF18 <- append(Initial_DCFPYLF18, c(
+    A_vasc_pro       = 0,
+    A_int_pro        = 0,
+    A_lumen          = NA,
+    AR_pro           = 0,
+    RF_pro           = P_Body_DCFPYLF18[5,12],
+    A_intern_pro     = 0, 
+    
+    A_vasc_kid       = 0,
+    A_int_kid        = NA,
+    A_lumen          = 0,
+    AR_kid           = 0,
+    RF_kid           = P_Body_DCFPYLF18[6,12],
+    A_intern_kid     = 0,
+    
+    A_vasc_li       = 0,
+    A_int_li        = 0,
+    A_lumen          = NA,
+    AR_li           = 0,
+    RF_li           = P_Body_DCFPYLF18[7,12],
+    A_intern_li     = 0,
+    
+    A_vasc_spl       = 0,
+    A_int_spl        = 0,
+    A_lumen          = NA,
+    AR_spl           = 0,
+    RF_spl           = P_Body_DCFPYLF18[8,12],
+    A_intern_spl     = 0,
+    
+    A_vasc_gi        = 0,
+    A_int_gi         = 0,
+    A_lumen          = NA,
+    AR_gi            = 0,
+    RF_gi            = P_Body_DCFPYLF18[9,12],
+    A_intern_gi      = 0,
+    
+    A_vasc_par       = 0,
+    A_int_par        = 0,
+    A_lumen          = NA,
+    AR_par           = 0,
+    RF_par           = P_Body_DCFPYLF18[10,12],
+    A_intern_par     = 0,
+    
+    A_vasc_sm        = 0,
+    A_int_sm         = 0,
+    A_lumen          = NA,
+    AR_sm            = 0,
+    RF_sm            = P_Body_DCFPYLF18[11,12],
+    A_intern_sm      = 0,
+    
+    A_vasc_lg        = 0,
+    A_int_lg         = 0,
+    A_lumen          = NA,
+    AR_lg            = 0,
+    RF_lg            = P_Body_DCFPYLF18[12,12],
+    A_intern_lg      = 0,
+    
+    A_vasc_rm        = 0,
+    A_int_rm         = 0,
+    A_lumen          = NA,
+    AR_rm            = NA,
+    RF_rm            = NA,
+    A_intern_rm      = NA,
+    
+    A_vasc_mu       = 0,
+    A_int_mu        = 0,
+    A_lumen          = NA,
+    AR_mu           = NA,
+    RF_mu           = NA,
+    A_intern_mu     = NA,
+    
+    A_vasc_sk        = 0,
+    A_int_sk         = 0,
+    A_lumen          = NA,
+    AR_sk            = NA,
+    RF_sk            = NA,
+    A_intern_sk      = NA,
+    
+    A_vasc_br        = 0,
+    A_int_br         = NA,
+    A_lumen          = NA,
+    AR_br            = NA,
+    RF_br            = NA,
+    A_intern_br      = NA,
+    
+    A_vasc_ad        = 0,
+    A_int_ad         = 0,
+    A_lumen          = NA,
+    AR_ad            = NA,
+    RF_ad            = NA,
+    A_intern_ad      = NA,
+    
+    A_vasc_hrt       = 0,
+    A_int_hrt        = 0,
+    A_lumen          = NA,
+    AR_hrt           = NA,
+    RF_hrt           = NA,
+    A_intern_hrt     = NA,
+    
+    A_vasc_bo        = 0,
+    A_int_bo         = 0,
+    A_lumen          = NA,
+    AR_bo            = NA,
+    RF_bo            = NA,
+    A_intern_bo      = NA,
+    
+    A_vasc_rest      = 0,
+    A_int_rest       = 0,
+    A_lumen          = NA,
+    AR_rest          = NA,
+    RF_rest          = NA,
+    A_intern_rest    = NA
+  ))
+  
+  #uses for simulation
+  Initial_DCFPYLF18_NA  <- Initial_DCFPYLF18[!is.na(Initial_DCFPYLF18)]  
+  
+  column_names <- list('A_vasc', 'A_int', 'A_lumen', 'AR', 'RF', 'A_intern')
+  
+  #used for ODE
+  if (V_tot_tu2 > 0){
+    Initial_DCFPYLF18_DF  <- data.frame(t(matrix(unlist(Initial_DCFPYLF18), ncol = 22, nrow = 6)))
+  }else{
+    Initial_DCFPYLF18_DF  <- data.frame(t(matrix(unlist(Initial_DCFPYLF18), ncol = 20, nrow = 6)))
+  }
+  for (name in names(Initial_DCFPYLF18_NA)){
+    assign(name,Initial_DCFPYLF18_NA[name])
+  }
+  colnames(Initial_DCFPYLF18_DF) <- column_names
+}
+
+
