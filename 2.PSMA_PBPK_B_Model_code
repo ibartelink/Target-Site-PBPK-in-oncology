@@ -1,0 +1,333 @@
+#1. PSMA differential equations
+#for PSMA and DCFPyL####  
+library(deSolve)
+#Model/ODE####
+PBPK_Model_DCFPYLF18 <- function(t,state,parameters){
+  with(as.list(c(state,parameters)),{
+    
+    
+    # ##veins,    1st line: portal-vein, 2nd: lungs, 3th all other organs going to vein except earlier used organs (lungs, spleen, pancreas and liver)
+    # dA_ven      <- (F_liv+F_spl+F_gi) * (A_vasc_liv/V_vasc_liv)-
+    #                 F_lu * (A_ven/V_ven)+
+    #                 sum(P_Body_DCFPYLF18$Flow[-c(1,7,8,9,21)]*(Initial_DCFPYLF18_DF$A_vasc[-c(1,2,3,9,10,11)]/P_Body_DCFPYLF18$V_vasc[-c(1,7,8,9,21)]))
+    
+    #Veins
+    dA_ven             <- ( 
+      + (F_kid * (A_vasc_kid/V_vasc_kid)) 
+      + (F_tu1 * (A_vasc_tu1/V_vasc_tu1))
+      + (F_pro * (A_vasc_pro/V_vasc_pro))
+      + ((F_li + F_spl + F_gi) * (A_vasc_li/V_vasc_li))
+      + (F_par * (A_vasc_par/V_vasc_par))
+      + (F_sm * (A_vasc_sm/V_vasc_sm))
+      + (F_lg * (A_vasc_lg/V_vasc_lg))
+      + (F_rm * (A_vasc_rm/V_vasc_rm))
+      + (F_mu * (A_vasc_mu/V_vasc_mu))
+      + (F_sk * (A_vasc_sk/V_vasc_sk))
+      + (F_br * (A_vasc_br/V_vasc_br))
+      + (F_ad * (A_vasc_ad/V_vasc_ad))
+      + (F_hrt * (A_vasc_hrt/V_vasc_hrt))
+      + (F_bo * (A_vasc_bo/V_vasc_bo))
+      + (F_rest * (A_vasc_rest/V_vasc_rest))
+      - (F_lu * (A_ven/V_ser_ven))
+    )
+    if(V_tot_tu2 > 0){
+      dA_ven <-  dA_ven + (F_tu2 * (A_vasc_tu2/V_vasc_tu2))
+      dA_ven <-  dA_ven + (F_tu_rest * (A_vasc_tu_rest/V_vasc_tu_rest))
+    }
+    dA_results    <- list(dA_ven)
+    
+    # ##arteries
+    # dA_art      <- (F_lu * (A_vasc_lu/V_vasc_lu)-
+    #                   sum(P_Body_DCFPYLF18$Flow[-c(1,21)]* (A_art/V_ser_art)))
+    
+    dA_art             <- ( + (F_lu  * A_vasc_lu/V_vasc_lu)  
+                            - (F_kid * (A_art/V_ser_art)) 
+                            - (F_tu1 * (A_art/V_ser_art))
+                            - (F_pro * (A_art/V_ser_art))
+                            - (F_li  * (A_art/V_ser_art))
+                            - (F_spl * (A_art/V_ser_art))
+                            - (F_gi  * (A_art/V_ser_art))
+                            - (F_par * (A_art/V_ser_art))
+                            - (F_sm  * (A_art/V_ser_art))
+                            - (F_lg  * (A_art/V_ser_art))
+                            - (F_rm  * (A_art/V_ser_art))
+                            - (F_mu  * (A_art/V_ser_art))
+                            - (F_sk  * (A_art/V_ser_art))
+                            - (F_br  * (A_art/V_ser_art))
+                            - (F_ad  * (A_art/V_ser_art))
+                            - (F_hrt * (A_art/V_ser_art))
+                            - (F_bo  * (A_art/V_ser_art))
+                            - (F_rest* (A_art/V_ser_art))
+    )
+    if(V_tot_tu2 > 0){
+      dA_art <-  dA_art - (F_tu2 * (A_art/V_ser_art))
+      dA_art <-  dA_art - (F_tu_rest * (A_art/V_ser_art))
+    }                        
+    
+    dA_results    <- append(dA_results, dA_art)
+    
+    #Lungs
+    dA_vasc_lu   <-  PS_lu*((A_int_lu/V_int_lu)-(A_vasc_lu/V_vasc_lu))+F_lu*((A_ven/V_ser_ven)-(A_vasc_lu/V_vasc_lu))
+    dA_int_lu    <-  PS_lu*((A_vasc_lu/V_vasc_lu)-(A_int_lu/V_int_lu))
+    # dAR_lu       <-  NA
+    # dRF_lu       <-  NA
+    # dA_intern_lu <-  NA
+    
+    dA_results   <- append(dA_results, list(dA_vasc_lu,
+                                            dA_int_lu
+    ))
+    
+    # #tumor 1
+    dA_vasc_tu1   <-  PS_tu1*((A_int_tu1/V_int_tu1)-(A_vasc_tu1/V_vasc_tu1))+F_tu1*((A_art/V_ser_art)-(A_vasc_tu1/V_vasc_tu1))   #Amount of ligand in the vascular space over time for organ i
+    dA_int_tu1    <-  PS_tu1*((A_vasc_tu1/V_vasc_tu1)-(A_int_tu1/V_int_tu1))+k_off*AR_tu1-(RF_tu1*k_on*(A_int_tu1/V_int_tu1))    #Amount of ligand in the interstitial space over time for organ i
+    dAR_tu1       <-  RF_tu1*k_on*(A_int_tu1/V_int_tu1)-(AR_tu1)*(k_off+lambda_int_tu)                                           #Amount of ligand bound to its receptor over time in organ i
+    dRF_tu1       <-  AR_tu1*(k_off+lambda_int_tu)-(RF_tu1*k_on*(A_int_tu1/V_int_tu1))                                             #Amount of free receptors over time in organ i
+    dA_intern_tu1 <-  AR_tu1*lambda_int_tu-A_intern_tu1*lambda_ext_tu    
+    
+    dA_results   <- append(dA_results, list(dA_vasc_tu1,
+                                            dA_int_tu1,
+                                            dAR_tu1,
+                                            dRF_tu1,
+                                            dA_intern_tu1
+    ))
+    
+    #Tumor 2
+    if (V_tot_tu2 > 0){
+      dA_vasc_tu2   <-  PS_tu2*((A_int_tu2/V_int_tu2)-(A_vasc_tu2/V_vasc_tu2))+F_tu2*((A_art/V_ser_art)-(A_vasc_tu2/V_vasc_tu2))
+      dA_int_tu2    <-  PS_tu2*((A_vasc_tu2/V_vasc_tu2)-(A_int_tu2/V_int_tu2))+k_off*AR_tu2-RF_tu2*k_on*(A_int_tu2/V_int_tu2)
+      dAR_tu2       <-  RF_tu2*k_on*(A_int_tu2/V_int_tu2)-AR_tu2*(k_off+lambda_int_tu)
+      dRF_tu2       <-  AR_tu2*(k_off+lambda_int_tu)-RF_tu2*k_on*(A_int_tu2/V_int_tu2)
+      dA_intern_tu2 <-  AR_tu2*lambda_int_tu-A_intern_tu2*lambda_ext_tu
+      
+      dA_results   <- append(dA_results, list(dA_vasc_tu2,
+                                              dA_int_tu2,
+                                              dAR_tu2,
+                                              dRF_tu2,
+                                              dA_intern_tu2
+      ))
+      
+      #Tumor rest
+      dA_vasc_tu_rest   <-  PS_tu_rest*((A_int_tu_rest/V_int_tu_rest)-(A_vasc_tu_rest/V_vasc_tu_rest))+F_tu_rest*((A_art/V_ser_art)-(A_vasc_tu_rest/V_vasc_tu_rest))
+      dA_int_tu_rest    <-  PS_tu_rest*((A_vasc_tu_rest/V_vasc_tu_rest)-(A_int_tu_rest/V_int_tu_rest))+k_off*AR_tu_rest-RF_tu_rest*k_on*(A_int_tu_rest/V_int_tu_rest)
+      dAR_tu_rest       <-  RF_tu_rest*k_on*(A_int_tu_rest/V_int_tu_rest)-AR_tu_rest*(k_off+lambda_int_tu)
+      dRF_tu_rest       <-  AR_tu_rest*(k_off+lambda_int_tu)-RF_tu_rest*k_on*(A_int_tu_rest/V_int_tu_rest)
+      dA_intern_tu_rest <-  AR_tu_rest*lambda_int_tu-A_intern_tu_rest*lambda_ext_tu_rest
+      
+      dA_results   <- append(dA_results, list(dA_vasc_tu_rest,
+                                              dA_int_tu_rest,
+                                              dAR_tu_rest,
+                                              dRF_tu_rest,
+                                              dA_intern_tu_rest
+      ))
+    }
+    
+    #Prostate
+    dA_vasc_pro   <-  PS_pro*((A_int_pro/V_int_pro)-(A_vasc_pro/V_vasc_pro))+F_pro*((A_art/V_ser_art)-(A_vasc_pro/V_vasc_pro))
+    dA_int_pro    <-  PS_pro*((A_vasc_pro/V_vasc_pro)-(A_int_pro/V_int_pro))+k_off*AR_pro-RF_pro*k_on*(A_int_pro/V_int_pro)
+    dAR_pro       <-  RF_pro*k_on*(A_int_pro/V_int_pro)-AR_pro*(k_off+lambda_int_pro)
+    dRF_pro       <-  AR_pro*(k_off+lambda_int_pro)-RF_pro*k_on*(A_int_pro/V_int_pro)
+    dA_intern_pro <-  AR_pro*lambda_int_pro-A_intern_pro*lambda_ext_pro
+    
+    dA_results   <- append(dA_results, list(dA_vasc_pro,
+                                            dA_int_pro,
+                                            dAR_pro,
+                                            dRF_pro,
+                                            dA_intern_pro
+    ))
+    
+    #Kidney
+    dA_vasc_kid   <-  -F_fil*(A_vasc_kid/V_vasc_kid)+(F_ret+F_ex)*(A_lumen/V_lumen)+F_kid*((A_art/V_ser_art)-(A_vasc_kid/V_vasc_kid))
+    dA_lumen  <-  F_fil*(A_vasc_kid/V_vasc_kid)-(F_ret+F_ex)*(A_lumen/V_lumen)+k_off*AR_kid-RF_kid*k_on*(A_lumen/V_lumen)
+    dAR_kid       <-  RF_kid*k_on*(A_lumen/V_lumen)-AR_kid*(k_off+lambda_int_kid)
+    dRF_kid       <-  AR_kid*(k_off+lambda_int_kid)-RF_kid*k_on*(A_lumen/V_lumen)
+    dA_intern_kid <-  AR_kid*lambda_int_kid-A_intern_kid*lambda_ext_kid
+    
+    dA_results   <- append(dA_results, list(dA_vasc_kid,
+                                            dA_lumen,
+                                            dAR_kid,
+                                            dRF_kid,
+                                            dA_intern_kid
+    ))
+    
+    #Liver
+    dA_vasc_li   <-  PS_li*((A_int_li/V_int_li)-(A_vasc_li/V_vasc_li))+
+      F_li*(A_art/V_ser_art)-(F_li+F_spl+F_gi)*(A_vasc_li/V_vasc_li)+               #The flow from the arties goes with flow_li, flow to vein goes with all 3 flows summed up
+      F_spl*(A_vasc_spl/V_vasc_spl)+                                                 #From the vascular space of the spleen
+      F_gi*(A_vasc_gi/V_vasc_gi)                                                     #From the vascular space of the GI-tract
+    dA_int_li    <-  PS_li*((A_vasc_li/V_vasc_li)-(A_int_li/V_int_li))+k_off*AR_li-RF_li*k_on*(A_int_li/V_int_li)
+    dAR_li       <-  RF_li*k_on*(A_int_li/V_int_li)-AR_li*(k_off+lambda_int_li)
+    dRF_li       <-  AR_li*(k_off+lambda_int_li)-RF_li*k_on*(A_int_li/V_int_li)
+    dA_intern_li <-  AR_li*lambda_int_li-A_intern_li*lambda_ext_li 
+    
+    dA_results   <- append(dA_results, list(dA_vasc_li,
+                                            dA_int_li,
+                                            dAR_li,
+                                            dRF_li,
+                                            dA_intern_li
+    ))
+    
+    #Spleen
+    dA_vasc_spl   <-  PS_spl*((A_int_spl/V_int_spl)-(A_vasc_spl/V_vasc_spl))+F_spl*((A_art/V_ser_art)-(A_vasc_spl/V_vasc_spl))
+    dA_int_spl    <-  PS_spl*((A_vasc_spl/V_vasc_spl)-(A_int_spl/V_int_spl))+k_off*AR_spl-RF_spl*k_on*(A_int_spl/V_int_spl)
+    dAR_spl       <-  RF_spl*k_on*(A_int_spl/V_int_spl)-AR_spl*(k_off+lambda_int_spl)
+    dRF_spl       <-  AR_spl*(k_off+lambda_int_spl)-RF_spl*k_on*(A_int_spl/V_int_spl)
+    dA_intern_spl <-  AR_spl*lambda_int_spl-A_intern_spl*lambda_ext_spl
+    
+    dA_results   <- append(dA_results, list(dA_vasc_spl,
+                                            dA_int_spl,
+                                            dAR_spl,
+                                            dRF_spl,
+                                            dA_intern_spl
+    ))
+    
+    #gi-tract
+    dA_vasc_gi   <-  PS_gi*((A_int_gi/V_int_gi)-(A_vasc_gi/V_vasc_gi))+F_gi*((A_art/V_ser_art)-(A_vasc_gi/V_vasc_gi))
+    dA_int_gi    <-  PS_gi*((A_vasc_gi/V_vasc_gi)-(A_int_gi/V_int_gi))+k_off*AR_gi-RF_gi*k_on*(A_int_gi/V_int_gi)
+    dAR_gi       <-  RF_gi*k_on*(A_int_gi/V_int_gi)-AR_gi*(k_off+lambda_int_gi)
+    dRF_gi       <-  AR_gi*(k_off+lambda_int_gi)-RF_gi*k_on*(A_int_gi/V_int_gi)
+    dA_intern_gi <-  AR_gi*lambda_int_gi-A_intern_gi*lambda_ext_gi
+    
+    dA_results   <- append(dA_results, list(dA_vasc_gi,
+                                            dA_int_gi,
+                                            dAR_gi,
+                                            dRF_gi,
+                                            dA_intern_gi
+    ))
+    
+    #Parotid glands
+    dA_vasc_par   <-  PS_par*((A_int_par/V_int_par)-(A_vasc_par/V_vasc_par))+F_par*((A_art/V_ser_art)-(A_vasc_par/V_vasc_par))
+    dA_int_par    <-  PS_par*((A_vasc_par/V_vasc_par)-(A_int_par/V_int_par))+k_off*AR_par-RF_par*k_on*(A_int_par/V_int_par)
+    dAR_par       <-  RF_par*k_on*(A_int_par/V_int_par)-AR_par*(k_off+lambda_int_par)
+    dRF_par       <-  AR_par*(k_off+lambda_int_par)-RF_par*k_on*(A_int_par/V_int_par)
+    dA_intern_par <-  AR_par*lambda_int_par-A_intern_par*lambda_ext_par
+    
+    dA_results   <- append(dA_results, list(dA_vasc_par,
+                                            dA_int_par,
+                                            dAR_par,
+                                            dRF_par,
+                                            dA_intern_par
+    ))
+    #Submandibular glands
+    dA_vasc_sm   <-  PS_sm*((A_int_sm/V_int_sm)-(A_vasc_sm/V_vasc_sm))+F_sm*((A_art/V_ser_art)-(A_vasc_sm/V_vasc_sm))
+    dA_int_sm    <-  PS_sm*((A_vasc_sm/V_vasc_sm)-(A_int_sm/V_int_sm))+k_off*AR_sm-RF_sm*k_on*(A_int_sm/V_int_sm)
+    dAR_sm       <-  RF_sm*k_on*(A_int_sm/V_int_sm)-AR_sm*(k_off+lambda_int_sm)
+    dRF_sm       <-  AR_sm*(k_off+lambda_int_sm)-RF_sm*k_on*(A_int_sm/V_int_sm)
+    dA_intern_sm <-  AR_sm*lambda_int_sm-A_intern_sm*lambda_ext_sm
+    
+    dA_results   <- append(dA_results, list(dA_vasc_sm,
+                                            dA_int_sm,
+                                            dAR_sm,
+                                            dRF_sm,
+                                            dA_intern_sm
+    ))
+    
+    #Lacrimal glands
+    dA_vasc_lg   <-  PS_lg*((A_int_lg/V_int_lg)-(A_vasc_lg/V_vasc_lg))+F_lg*((A_art/V_ser_art)-(A_vasc_lg/V_vasc_lg))
+    dA_int_lg    <-  PS_lg*((A_vasc_lg/V_vasc_lg)-(A_int_lg/V_int_lg))+k_off*AR_lg-RF_lg*k_on*(A_int_lg/V_int_lg)
+    dAR_lg       <-  RF_lg*k_on*(A_int_lg/V_int_lg)-AR_lg*(k_off+lambda_int_lg)
+    dRF_lg       <-  AR_lg*(k_off+lambda_int_lg)-RF_lg*k_on*(A_int_lg/V_int_lg)
+    dA_intern_lg <-  AR_lg*lambda_int_lg-A_intern_lg*lambda_ext_lg
+    
+    dA_results   <- append(dA_results, list(dA_vasc_lg,
+                                            dA_int_lg,
+                                            dAR_lg,
+                                            dRF_lg,
+                                            dA_intern_lg
+    ))
+    
+    #Red marrow
+    dA_vasc_rm   <-  PS_rm*((A_int_rm/V_int_rm)-(A_vasc_rm/V_vasc_rm))+F_rm*((A_art/V_ser_art)-(A_vasc_rm/V_vasc_rm))
+    dA_int_rm    <-  PS_rm*((A_vasc_rm/V_vasc_rm)-(A_int_rm/V_int_rm))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_rm,
+                                            dA_int_rm
+    ))
+    
+    #Muscles
+    dA_vasc_mu   <-  PS_mu*((A_int_mu/V_int_mu)-(A_vasc_mu/V_vasc_mu))+F_mu*((A_art/V_ser_art)-(A_vasc_mu/V_vasc_mu))
+    dA_int_mu    <-  PS_mu*((A_vasc_mu/V_vasc_mu)-(A_int_mu/V_int_mu))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_mu,
+                                            dA_int_mu
+    ))
+    
+    #Skin
+    dA_vasc_sk   <-  PS_sk*((A_int_sk/V_int_sk)-(A_vasc_sk/V_vasc_sk))+F_sk*((A_art/V_ser_art)-(A_vasc_sk/V_vasc_sk))
+    dA_int_sk    <-  PS_sk*((A_vasc_sk/V_vasc_sk)-(A_int_sk/V_int_sk))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_sk,
+                                            dA_int_sk
+    ))
+    
+    #Brain
+    dA_vasc_br   <-  F_br*((A_art/V_ser_art)-(A_vasc_br/V_vasc_br))   #PS_br*((A_int_br/V_int_br)-(A_vasc_br/V_vasc_br))
+    #dA_int_br    <-  PS_br*((A_vasc_br/V_vasc_br)-(A_int_br/V_int_br))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_br
+                                            #dA_int_br
+    ))
+    
+    
+    #Adipose tissue
+    dA_vasc_ad   <-  PS_ad*((A_int_ad/V_int_ad)-(A_vasc_ad/V_vasc_ad))+F_ad*((A_art/V_ser_art)-(A_vasc_ad/V_vasc_ad))
+    dA_int_ad    <-  PS_ad*((A_vasc_ad/V_vasc_ad)-(A_int_ad/V_int_ad))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_ad,
+                                            dA_int_ad
+    ))
+    
+    #Heart
+    dA_vasc_hrt   <-  PS_hrt*((A_int_hrt/V_int_hrt)-(A_vasc_hrt/V_vasc_hrt))+F_hrt*((A_art/V_ser_art)-(A_vasc_hrt/V_vasc_hrt))
+    dA_int_hrt    <-  PS_hrt*((A_vasc_hrt/V_vasc_hrt)-(A_int_hrt/V_int_hrt))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_hrt,
+                                            dA_int_hrt
+    ))
+    
+    #Bone
+    dA_vasc_bo   <-  PS_bo*((A_int_bo/V_int_bo)-(A_vasc_bo/V_vasc_bo))+F_bo*((A_art/V_ser_art)-(A_vasc_bo/V_vasc_bo))
+    dA_int_bo    <-  PS_bo*((A_vasc_bo/V_vasc_bo)-(A_int_bo/V_int_bo))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_bo,
+                                            dA_int_bo
+    ))
+    
+    #Rest
+    dA_vasc_rest   <-  PS_rest*((A_int_rest/V_int_rest)-(A_vasc_rest/V_vasc_rest))+F_rest*((A_art/V_ser_art)-(A_vasc_rest/V_vasc_rest))
+    dA_int_rest    <-  PS_rest*((A_vasc_rest/V_vasc_rest)-(A_int_rest/V_int_rest))
+    
+    dA_results   <- append(dA_results, list(dA_vasc_rest,
+                                            dA_int_rest
+    ))
+    
+    return(list(unlist(dA_results)))
+  }
+  )
+}
+
+
+#simulation####
+if (PSMA ==  TRUE){
+  runtime  <- 10080
+}else{
+  runtime  <- 120
+}
+
+Obs_Times_DCFPYLF18 <- seq(0, runtime, 1)
+
+Regimen_DCFPYLF18 <- data.frame(
+  var     = "A_ven",            #place dose is administered         
+  time    = c(0),  
+  value   = Dose_nmol_P, 
+  method  = "add")
+Regimen_DCFPYLF18 <- Regimen_DCFPYLF18[order(Regimen_DCFPYLF18$time),]
+Events_DCFPYLF18  <- list(data=Regimen_DCFPYLF18)
+
+Simulation_DCFPYLF18 <- lsoda(
+  func    = PBPK_Model_DCFPYLF18, 
+  y       = Initial_DCFPYLF18_NA, 
+  times   = Obs_Times_DCFPYLF18, 
+  parms   = P_Parameters_DCFPYLF18, 
+  events  = Events_DCFPYLF18
+)
+Simulation_DCFPYLF18_DF <- as.data.frame(Simulation_DCFPYLF18)
