@@ -331,3 +331,24 @@ Simulation_DCFPYLF18 <- lsoda(
   events  = Events_DCFPYLF18
 )
 Simulation_DCFPYLF18_DF <- as.data.frame(Simulation_DCFPYLF18)
+#fitting,
+set.seed(1)
+
+fits<-obs %>% lapply(function(x)
+  if(is.null(x)) NULL
+  else list(nls.lm(par=parms[1],
+                   lower=c(0),
+                   upper=c(200),
+                   fn=residualODE, 
+                   data= x,
+                   res=TRUE,
+                   control = nls.lm.control(nprint = 1, factor = .7)),
+            x))
+
+
+final_predictions_120 <- fits_120 %>% lapply(function(x)
+  if(is.null(x)) NULL
+  else residualODE(par=x[[1]]$par,
+                   data=x[[2]],
+                   res=FALSE)
+  )
